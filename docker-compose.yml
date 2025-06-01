@@ -1,0 +1,78 @@
+version: "3.8"
+
+services:
+  mysql:
+    container_name: ms_mysql
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: tiendat1409  # ✅ chỉ cần dòng này
+      MYSQL_DATABASE: ecommerce
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - microservices-net
+    restart: unless-stopped
+
+  phpmyadmin:
+    container_name: ms_phpmyadmin
+    image: phpmyadmin/phpmyadmin:5
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: tiendat1409
+    ports:
+      - "8080:80"
+    networks:
+      - microservices-net
+    restart: unless-stopped
+
+  mongo:
+    container_name: ms_mongo_db
+    image: mongo:5.0
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: pass
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo:/data/db
+    networks:
+      - microservices-net
+    restart: unless-stopped
+
+  mongo-express:
+    container_name: ms_mongo_express
+    image: mongo-express:latest
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: pass
+      ME_CONFIG_MONGODB_SERVER: ms_mongo_db
+    ports:
+      - "8081:8081"
+    networks:
+      - microservices-net
+    depends_on: # Đảm bảo mongo khởi động trước
+      - mongo
+    restart: unless-stopped
+
+  mail-dev:
+    container_name: ms_mail_dev
+    image: maildev/maildev
+    ports:
+      - "1080:1080"
+      - "1025:1025"
+    networks:
+      - microservices-net
+    restart: unless-stopped
+
+networks:
+  microservices-net:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  mongo: #Đã sửa
