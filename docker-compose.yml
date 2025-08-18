@@ -5,7 +5,7 @@ services:
     container_name: ms_mysql
     image: mysql:8.0
     environment:
-      MYSQL_ROOT_PASSWORD: tiendat1409  # ✅ chỉ cần dòng này
+      MYSQL_ROOT_PASSWORD: tiendat1409
       MYSQL_DATABASE: ecommerce
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     ports:

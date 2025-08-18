@@ -12,13 +12,19 @@
         <module name="gateway" />
         <module name="discovery" />
       </profile>
-      <profile name="Annotation profile for order" enabled="true">
+      <profile name="Annotation profile for auth" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <processorPath useClasspath="false">
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.38/lombok-1.18.38.jar" />
         </processorPath>
+        <module name="notification" />
+        <module name="delivery" />
+        <module name="Payment" />
+        <module name="auth" />
+        <module name="inventory" />
+        <module name="cart" />
         <module name="order" />
         <module name="customer" />
       </profile>
@@ -26,11 +32,17 @@
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="Payment" options="-parameters" />
       <module name="Product" options="-parameters" />
+      <module name="auth" options="-parameters" />
+      <module name="cart" options="-parameters" />
       <module name="config" options="-parameters" />
       <module name="customer" options="-parameters" />
+      <module name="delivery" options="-parameters" />
       <module name="discovery" options="-parameters" />
       <module name="gateway" options="-parameters" />
+      <module name="inventory" options="-parameters" />
+      <module name="notification" options="-parameters" />
       <module name="order" options="-parameters" />
     </option>
   </component>
