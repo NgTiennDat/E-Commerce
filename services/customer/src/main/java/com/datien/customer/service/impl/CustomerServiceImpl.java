@@ -6,7 +6,7 @@ import com.datien.customer.model.Customer;
 import com.datien.customer.model.dto.CustomerRequest;
 import com.datien.customer.model.dto.CustomerResponse;
 import com.datien.customer.model.dto.UpdateCustomerRequest;
-import com.datien.customer.CustomerRepository;
+import com.datien.customer.repository.CustomerRepository;
 import com.datien.customer.service.CustomerMapper;
 import com.datien.customer.service.CustomerService;
 import lombok.RequiredArgsConstructor;
