@@ -3,3 +3,9 @@ spring:
     import: optional:configserver:http://localhost:8888
   application:
     name: product-service
+
+  swagger:
+    enable: true
+    title: E-Buy Auth API
+    description: API documentation for E-Buy Auth service
+    version: 1.0.0
