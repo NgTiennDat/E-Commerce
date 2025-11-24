@@ -1,6 +1,10 @@
 package com.example.auth.config;
 
+import com.example.auth.filter.JwtAuthFilter;
+import com.example.auth.handler.OAuth2SuccessHandler;
+import com.example.auth.secService.CustomOAuth2UserService;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -14,6 +18,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
 
     private final AuthenticationProvider authProvider;

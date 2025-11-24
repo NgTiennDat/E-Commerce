@@ -2,10 +2,21 @@ spring:
   config:
     import: optional:configserver:http://localhost:8888
   application:
-    name: product-service
+    name: auth-service
 
   swagger:
     enable: true
     title: E-Buy Auth API
     description: API documentation for E-Buy Auth service
     version: 1.0.0
+
+application:
+  security:
+    jwt:
+      secret-key: YoVBs+fSApwsrc0fZeUG7tFtyRjc4nIixENeTMlkwSXdmnCSS48XPYhUO29JPqeO
+      expiration: 900000
+      refresh-token:
+        expiration: 604800000
+redis:
+  host: 127.0.0.1
+  port: 6379

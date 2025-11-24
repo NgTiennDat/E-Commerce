@@ -1,6 +1,13 @@
 version: "3.8"
 
 services:
+  redis:
+    container_name: redis--pet-project
+    image: redis:7.2
+    ports:
+      - "6379:6379"
+    networks:
+      - microservices-net
   mysql:
     container_name: ms_mysql
     image: mysql:8.0

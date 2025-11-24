@@ -31,7 +31,7 @@ public class SwaggerConfig {
                 .info(new Info()
                         .title(swaggerProperties.getTitle())
                         .description(swaggerProperties.getDescription())
-                        .version("0.0.1")
+                        .version(swaggerProperties.getVersion())
                         .contact(new io.swagger.v3.oas.models.info.Contact()
                                 .name("E-Buy Support")
                                 .email("support@gmail.com")))

@@ -1,7 +1,14 @@
 package com.example.auth.utils;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
@@ -9,7 +16,16 @@ import java.util.Date;
 import java.util.Map;
 import java.util.function.Function;
 
+@Service
+@RequiredArgsConstructor
 public class JwtUtils {
+
+    @Value("${application.security.jwt.expiration}")
+    private Long jwtExpiration;
+
+    @Value("${application.security.jwt.secret-key}")
+    private String SECRET_KEY;
+
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }
