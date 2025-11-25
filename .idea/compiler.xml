@@ -12,21 +12,22 @@
         <module name="gateway" />
         <module name="discovery" />
       </profile>
-      <profile name="Annotation profile for auth" enabled="true">
+      <profile name="Annotation profile for E-Commerce" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <processorPath useClasspath="false">
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.38/lombok-1.18.38.jar" />
         </processorPath>
-        <module name="notification" />
         <module name="delivery" />
+        <module name="notification" />
         <module name="Payment" />
+        <module name="common" />
         <module name="auth" />
         <module name="inventory" />
         <module name="cart" />
-        <module name="order" />
         <module name="customer" />
+        <module name="order" />
       </profile>
     </annotationProcessing>
   </component>
@@ -36,6 +37,7 @@
       <module name="Product" options="-parameters" />
       <module name="auth" options="-parameters" />
       <module name="cart" options="-parameters" />
+      <module name="common" options="-parameters" />
       <module name="config" options="-parameters" />
       <module name="customer" options="-parameters" />
       <module name="delivery" options="-parameters" />

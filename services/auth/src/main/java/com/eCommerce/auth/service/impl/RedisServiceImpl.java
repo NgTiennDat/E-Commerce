@@ -2,6 +2,8 @@ package com.eCommerce.auth.service.impl;
 
 import com.eCommerce.auth.entity.RefreshToken;
 import com.eCommerce.auth.service.RedisService;
+import com.eCommerce.customer.common.ResponseCode;
+import com.eCommerce.customer.exception.CustomException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -41,7 +43,7 @@ public class RedisServiceImpl implements RedisService {
 
             redisTemplate.opsForValue().set(key, refreshToken, ttl, TimeUnit.SECONDS);
         } catch (RuntimeException e) {
-            log.error(e.getMessage());
+            throw new CustomException(ResponseCode.CACHE_FAILED);
         }
     }
 
