@@ -30,7 +30,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
 
-    private static final String DEFAULT_ROLE_CODE = "CUSTOMER";
+    private static final String DEFAULT_ROLE_CODE = "200";
 
     @Override
     public RegistrationResponse register(RegistrationRequest request) {
