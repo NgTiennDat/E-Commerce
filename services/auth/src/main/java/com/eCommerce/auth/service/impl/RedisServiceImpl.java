@@ -2,8 +2,8 @@ package com.eCommerce.auth.service.impl;
 
 import com.eCommerce.auth.entity.RefreshToken;
 import com.eCommerce.auth.service.RedisService;
-import com.eCommerce.customer.common.ResponseCode;
-import com.eCommerce.customer.exception.CustomException;
+import com.eCommerce.common.exception.CustomException;
+import com.eCommerce.common.payload.ResponseCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;

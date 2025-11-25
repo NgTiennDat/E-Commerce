@@ -138,7 +138,7 @@
 		</dependency>
 		<dependency>
 			<groupId>com.eCommerce</groupId>
-			<artifactId>customer</artifactId>
+			<artifactId>common</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 			<scope>compile</scope>
 		</dependency>

@@ -12,7 +12,7 @@ import java.util.Set;
 public class RoleResponse {
 
     private Long id;
-    private String code;        // ADMIN, SELLER, CUSTOMER, ...
+    private String code;
     private String name;
     private String description;
 

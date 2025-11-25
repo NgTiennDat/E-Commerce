@@ -1,6 +1,9 @@
 package com.eCommerce.auth.repository;
 
 import com.eCommerce.auth.entity.User;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -24,4 +27,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
                                           AND :path = p.path
                                         """)
     Boolean hasPermission(String username, String path, String httpMethod);
+
+    boolean existsUserByUsername(@NotBlank @Size(min = 4, max = 50) String username);
+
+    boolean existsUserByEmail(@NotBlank @Email @Size(max = 150) String email);
 }

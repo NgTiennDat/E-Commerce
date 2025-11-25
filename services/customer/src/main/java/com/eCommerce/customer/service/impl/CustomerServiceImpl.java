@@ -1,7 +1,7 @@
 package com.eCommerce.customer.service.impl;
 
-import com.eCommerce.customer.common.ResponseCode;
-import com.eCommerce.customer.exception.CustomException;
+import com.eCommerce.common.exception.CustomException;
+import com.eCommerce.common.payload.ResponseCode;
 import com.eCommerce.customer.model.Customer;
 import com.eCommerce.customer.model.dto.CustomerRequest;
 import com.eCommerce.customer.model.dto.CustomerResponse;
