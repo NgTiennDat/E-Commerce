@@ -13,12 +13,19 @@ spring:
     database: mysql
     database-platform: org.hibernate.dialect.MySQL8Dialect
   kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: payment-service-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.eCommerce.common.events"
     producer:
-      bootstrap-servers: localhost:9092
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
       properties:
-        spring.json.type.mapping: orderConfirmation:com.datien.ecommerce.kafka.OrderConfirmation
+        spring.json.type.mapping: orderConfirmation:com.ecommerce.kafka.OrderConfirmation
+        spring.json.trusted.packages: "com.eCommerce.common.events"
 
 application:
   config:
