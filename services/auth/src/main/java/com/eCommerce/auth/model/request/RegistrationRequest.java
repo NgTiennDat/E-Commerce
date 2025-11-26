@@ -43,4 +43,7 @@ public class RegistrationRequest {
 
     @Size(max = 255)
     private String address;
+
+    @NotBlank
+    private String roleCode;
 }

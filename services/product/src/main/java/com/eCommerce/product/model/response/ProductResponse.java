@@ -10,7 +10,7 @@ public class ProductResponse {
     private Integer id;
     private String name;
     private String description;
-    private double availableQuantity;
+    private Integer availableQuantity;
     private BigDecimal price;
     private CategoryDto categoryDto;
 }

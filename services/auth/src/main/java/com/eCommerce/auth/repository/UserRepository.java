@@ -1,6 +1,6 @@
 package com.eCommerce.auth.repository;
 
-import com.eCommerce.auth.entity.User;
+import com.eCommerce.auth.model.entity.User;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -31,4 +31,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsUserByUsername(@NotBlank @Size(min = 4, max = 50) String username);
 
     boolean existsUserByEmail(@NotBlank @Email @Size(max = 150) String email);
+
+    @Query("""
+           SELECT
+               u
+           FROM User u
+           WHERE (u.username = :usernameOrEmail OR u.email = :usernameOrEmail)
+               AND u.isDeleted = false
+           """)
+    Optional<User> findByUsernameOrEmail(String usernameOrEmail);
 }

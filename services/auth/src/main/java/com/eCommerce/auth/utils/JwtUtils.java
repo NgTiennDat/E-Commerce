@@ -1,7 +1,7 @@
 package com.eCommerce.auth.utils;
 
-import com.eCommerce.auth.entity.Role;
-import com.eCommerce.auth.entity.User;
+import com.eCommerce.auth.model.entity.Role;
+import com.eCommerce.auth.model.entity.User;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +23,9 @@ public class JwtUtils {
 
     @Value("${application.security.jwt.expiration}")
     private Long jwtExpiration;
+
+    @Value("${application.security.jwt.refresh-token.expiration}")
+    private Long refreshTokenExpiration;
 
     @Value("${application.security.jwt.secret-key}")
     private String SECRET_KEY;

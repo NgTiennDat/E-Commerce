@@ -1,6 +1,6 @@
 package com.eCommerce.auth.service.impl;
 
-import com.eCommerce.auth.entity.RefreshToken;
+import com.eCommerce.auth.model.entity.RefreshToken;
 import com.eCommerce.auth.service.RedisService;
 import com.eCommerce.common.exception.CustomException;
 import com.eCommerce.common.payload.ResponseCode;
@@ -61,7 +61,7 @@ public class RedisServiceImpl implements RedisService {
             return cachedValue instanceof RefreshToken ? (RefreshToken) cachedValue : null;
         }  catch (RuntimeException e) {
             log.error(e.getMessage());
-            return null;
+            throw new CustomException(ResponseCode.CACHE_FAILED);
         }
     }
 
@@ -75,6 +75,7 @@ public class RedisServiceImpl implements RedisService {
             redisTemplate.delete(REFRESH_TOKEN_PREFIX + refreshTokenId);
         } catch (Exception e) {
             log.error(e.getMessage());
+            throw new CustomException(ResponseCode.CACHE_FAILED);
         }
     }
 }

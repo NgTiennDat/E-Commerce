@@ -1,6 +1,6 @@
 package com.eCommerce.auth.repository;
 
-import com.eCommerce.auth.entity.Role;
+import com.eCommerce.auth.model.entity.Role;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

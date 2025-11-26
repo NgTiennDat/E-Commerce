@@ -1,6 +1,6 @@
 package com.eCommerce.auth.service;
 
-import com.eCommerce.auth.entity.RefreshToken;
+import com.eCommerce.auth.model.entity.RefreshToken;
 
 import java.util.concurrent.TimeUnit;
 

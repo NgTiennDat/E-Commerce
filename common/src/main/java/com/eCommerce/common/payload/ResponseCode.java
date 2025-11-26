@@ -13,11 +13,18 @@ public enum ResponseCode {
 
     // ======= User ========
     USERNAME_ALREADY_EXISTS("USER_409", "Username already exists" , HttpStatus.CONFLICT),
-
+    USER_NOT_FOUND("USER_404", "User not found", HttpStatus.NOT_FOUND),
+    INVALID_CREDENTIALS("USER_403", "Invalid credentials", HttpStatus.UNAUTHORIZED),
     // ======= Email ========
     EMAIL_ALREADY_EXISTS("EMAIL_409", "Email already exists" , HttpStatus.CONFLICT),
     // ======= Role ========
-    ROLE_NOT_FOUND("ROLE_404", "Role not found" , HttpStatus.NOT_FOUND),;
+    ROLE_NOT_FOUND("ROLE_404", "Role not found" , HttpStatus.NOT_FOUND),
+
+    // ======= Product ========
+    PRODUCT_NOT_FOUND("PRD_404", "Product not found", HttpStatus.NOT_FOUND),
+    PRODUCT_QUANTITY_NOT_ENOUGH("PRD_400", "Product quantity not enough", HttpStatus.BAD_REQUEST);
+
+
     private final String code;
     private final String message;
     private final HttpStatus httpStatus;

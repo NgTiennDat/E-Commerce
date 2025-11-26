@@ -1,7 +1,7 @@
 package com.eCommerce.order.order.model;
 
 public enum PaymentMethod {
-    VNPAY,
+    VN_PAY,
     CREDIT_CARD,
     VISA,
     MASTER_CARD,

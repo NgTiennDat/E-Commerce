@@ -51,7 +51,6 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(permitAllEndpoints)
                         .permitAll()
-                        .requestMatchers("/api/v1/knowledge/upload").hasRole("ADMIN")
                         .anyRequest()
                         .authenticated()
                 )

@@ -1,12 +1,12 @@
 spring:
   datasource:
     username: root
-    password: tiendat1409
+    password: root
     url: jdbc:mysql://localhost:3306/product
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
       show-sql: true
     database: mysql
     database-platform: org.hibernate.dialect.MySQL8Dialect
@@ -17,7 +17,7 @@ spring:
     baseline-version: 0
     user: ${spring.datasource.username}
     password: ${spring.datasource.password}
-    location: classpath:db/migration
+    location: classpath:db.migration
 
 server:
   port: 8050

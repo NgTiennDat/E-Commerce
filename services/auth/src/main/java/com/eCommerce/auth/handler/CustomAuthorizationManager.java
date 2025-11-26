@@ -1,6 +1,6 @@
 package com.eCommerce.auth.handler;
 
-import com.eCommerce.auth.entity.User;
+import com.eCommerce.auth.model.entity.User;
 import com.eCommerce.auth.handler.impl.UserDetailsServiceImpl;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;

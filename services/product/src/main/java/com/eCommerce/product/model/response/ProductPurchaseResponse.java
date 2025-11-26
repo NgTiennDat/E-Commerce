@@ -10,5 +10,5 @@ public class ProductPurchaseResponse{
     private String name;
     private String description;
     private BigDecimal price;
-    private double quantity;
+    private Integer quantity;
 }
