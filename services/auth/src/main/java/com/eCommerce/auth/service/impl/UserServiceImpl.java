@@ -7,7 +7,7 @@ import com.eCommerce.auth.model.response.RegistrationResponse;
 import com.eCommerce.auth.repository.RoleRepository;
 import com.eCommerce.auth.repository.UserRepository;
 import com.eCommerce.auth.service.UserService;
-import com.eCommerce.auth.utils.JwtUtils;
+import com.eCommerce.common.security.JwtUtils;
 import com.eCommerce.common.exception.CustomException;
 import com.eCommerce.common.payload.ResponseCode;
 import lombok.RequiredArgsConstructor;

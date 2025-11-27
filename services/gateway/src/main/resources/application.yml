@@ -3,3 +3,13 @@ spring:
     import: optional:configserver:http://localhost:8888
   application:
     name: gateway-service
+application:
+  security:
+    jwt:
+      secret-key: YoVBs+fSApwsrc0fZeUG7tFtyRjc4nIixENeTMlkwSXdmnCSS48XPYhUO29JPqeO
+      expiration: 900000
+      refresh-token:
+        expiration: 604800000
+app:
+  jwt:
+    enabled: true
