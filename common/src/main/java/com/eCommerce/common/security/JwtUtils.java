@@ -107,7 +107,7 @@ public class JwtUtils {
      */
     public boolean isTokenValid(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
-        return username.equals(userDetails.getUsername()) && !isTokenExpired(token);
+        return username.equals(userDetails.getUsername()) && isTokenExpired(token);
     }
 
     /**
@@ -116,7 +116,7 @@ public class JwtUtils {
     public boolean isTokenValid(String token) {
         try {
             extractAllClaims(token); // parse được là OK, nếu hết hạn sẽ ném exception
-            return !isTokenExpired(token);
+            return isTokenExpired(token);
         } catch (JwtException | IllegalArgumentException e) {
             log.warn("Invalid JWT token: {}", e.getMessage());
             return false;
@@ -127,7 +127,7 @@ public class JwtUtils {
 
     private boolean isTokenExpired(String token) {
         Date expiration = extractClaim(token, Claims::getExpiration);
-        return expiration.before(new Date());
+        return !expiration.before(new Date());
     }
 
     private Claims extractAllClaims(String token) {

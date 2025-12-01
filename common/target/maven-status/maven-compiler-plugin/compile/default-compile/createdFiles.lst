@@ -1,7 +1,11 @@
 com\eCommerce\common\payload\FieldViolation.class
 com\eCommerce\common\payload\ResponseCode.class
 com\eCommerce\common\exception\ResourceNotFoundException.class
+com\eCommerce\common\security\JwtUtils.class
 com\eCommerce\common\payload\Response$Metadata.class
 com\eCommerce\common\exception\CustomException.class
+com\eCommerce\common\events\PaymentSucceededEvent.class
 com\eCommerce\common\payload\Response.class
+com\eCommerce\common\events\OrderCreatedEvent.class
 com\eCommerce\common\exception\GlobalExceptionHandler.class
+com\eCommerce\common\kafka\GlobalKafkaConfig.class
