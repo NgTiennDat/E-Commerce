@@ -25,8 +25,8 @@ public class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
 
     // Các path public không cần JWT (login, register, swagger, v.v.)
     private static final List<String> WHITE_LIST = List.of(
-            "/auth-service/api/v1/auth/login",
-            "/auth-service/api/v1/auth/register",
+            "/api/v1/auth/login",
+            "/api/v1/auth/register",
             "/auth-service/api/v1/auth/refresh-token",
             "/eureka",          // nếu có
             "/actuator",        // nếu có

@@ -13,7 +13,6 @@ import com.eCommerce.product.repository.ProductRepository;
 import com.eCommerce.product.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.actuate.logging.LoggersEndpoint;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,7 +26,6 @@ import java.util.List;
 public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
-    private final LoggersEndpoint loggersEndpoint;
 
     @Override
     public Integer addProduct(ProductRequest request) {
