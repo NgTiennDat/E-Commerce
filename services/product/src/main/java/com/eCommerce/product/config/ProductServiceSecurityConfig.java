@@ -26,3 +26,4 @@ public class ProductServiceSecurityConfig {
         return http.build();
     }
 }
+ 
