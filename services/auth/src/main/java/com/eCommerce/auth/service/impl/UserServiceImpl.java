@@ -7,9 +7,9 @@ import com.eCommerce.auth.model.response.RegistrationResponse;
 import com.eCommerce.auth.repository.RoleRepository;
 import com.eCommerce.auth.repository.UserRepository;
 import com.eCommerce.auth.service.UserService;
-import com.eCommerce.common.security.JwtUtils;
 import com.eCommerce.common.exception.CustomException;
 import com.eCommerce.common.payload.ResponseCode;
+import com.eCommerce.common.security.JwtUtils;
 import lombok.RequiredArgsConstructor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -23,7 +23,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
-    private static final Logger logger = LogManager.getLogger(AuthServiceImpl.class);
+    private static final Logger logger = LogManager.getLogger(UserServiceImpl.class);
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;

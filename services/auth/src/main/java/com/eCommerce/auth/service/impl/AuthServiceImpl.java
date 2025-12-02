@@ -3,12 +3,11 @@ package com.eCommerce.auth.service.impl;
 import com.eCommerce.auth.model.request.LoginRequest;
 import com.eCommerce.auth.model.response.AuthResponse;
 import com.eCommerce.auth.model.response.UserResponse;
-import com.eCommerce.auth.repository.RoleRepository;
 import com.eCommerce.auth.repository.UserRepository;
 import com.eCommerce.auth.service.AuthService;
-import com.eCommerce.auth.service.RedisService;
 import com.eCommerce.common.exception.CustomException;
 import com.eCommerce.common.payload.ResponseCode;
+import com.eCommerce.auth.service.RedisService;
 import com.eCommerce.common.security.JwtUtils;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -30,7 +29,6 @@ public class AuthServiceImpl implements AuthService {
     private static final Logger logger = LogManager.getLogger(AuthServiceImpl.class);
 
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
 

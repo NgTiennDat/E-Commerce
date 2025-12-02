@@ -1,6 +1,6 @@
-package com.eCommerce.auth.config;
+package com.eCommerce.common.redis.config;
 
-import com.eCommerce.auth.common.properties.RedisProperties;
+import com.eCommerce.common.redis.properties.RedisProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
