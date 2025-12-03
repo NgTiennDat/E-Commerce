@@ -60,7 +60,6 @@ public class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
         String username = jwtUtils.extractUsername(token);
         var roles = jwtUtils.extractRoles(token);
 
-        // Đính thêm header để các service phía sau đọc được
         var mutatedRequest = exchange.getRequest().mutate()
                 .header("X-User-Name", username)
                 .header("X-User-Roles", String.join(",", roles))
@@ -82,7 +81,7 @@ public class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
         String body = """
-                {
+                {    
                   "code": 401,
                   "message": "%s"
                 }

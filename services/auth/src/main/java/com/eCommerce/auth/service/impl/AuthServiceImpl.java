@@ -7,7 +7,7 @@ import com.eCommerce.auth.repository.UserRepository;
 import com.eCommerce.auth.service.AuthService;
 import com.eCommerce.common.exception.CustomException;
 import com.eCommerce.common.payload.ResponseCode;
-import com.eCommerce.auth.service.RedisService;
+import com.eCommerce.common.redis.service.RedisService;
 import com.eCommerce.common.security.JwtUtils;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;

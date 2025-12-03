@@ -9,6 +9,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,6 +22,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -54,6 +57,9 @@ public class User extends Audit implements UserDetails {
 
     @Column(name = "is_enabled", nullable = false)
     private Boolean isEnabled = true;
+
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
+    private List<RefreshToken> refreshTokens;
 
     // CUSTOMER / SELLER / ADMIN... sẽ đi qua roles
     @ManyToMany(fetch = FetchType.EAGER)
