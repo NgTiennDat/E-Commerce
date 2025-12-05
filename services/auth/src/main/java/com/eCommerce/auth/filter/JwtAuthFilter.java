@@ -1,6 +1,6 @@
 package com.eCommerce.auth.filter;
 
-import com.eCommerce.auth.utils.JwtUtils;
+import com.eCommerce.common.security.JwtUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;

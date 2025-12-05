@@ -1,4 +1,4 @@
-package com.eCommerce.auth.common.properties;
+package com.eCommerce.common.redis.properties;
 
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Value;

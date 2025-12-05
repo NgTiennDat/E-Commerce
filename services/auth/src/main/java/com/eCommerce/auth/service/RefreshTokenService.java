@@ -2,14 +2,7 @@ package com.eCommerce.auth.service;
 
 import com.eCommerce.auth.model.entity.RefreshToken;
 
-import java.util.concurrent.TimeUnit;
-
-public interface RedisService {
-    void setValue(String key, Object value, long timeout, TimeUnit unit);
-
-    Object getValue(String key);
-
-    void delete(String key);
+public interface RefreshTokenService {
 
     void cacheRefreshToken(RefreshToken refreshToken);
 

@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "tbl_user_info")
+@Table(name = "user_infos")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -37,9 +37,6 @@ public class UserInfo extends Audit {
 
     @Column(name = "last_name", length = 100)
     private String lastName;
-
-    @Column(name = "email", length = 150, unique = true)
-    private String email;
 
     @Column(name = "phone_number", length = 20)
     private String phoneNumber;
