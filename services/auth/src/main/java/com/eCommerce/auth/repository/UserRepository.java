@@ -10,8 +10,6 @@ import org.springframework.data.jpa.repository.Query;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
-    Optional<User> findByEmail(String username);
-
     @Query(nativeQuery = true, value = """
                                         SELECT IF(COUNT(*) > 0, true, false)
                                         FROM users u
@@ -40,4 +38,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
                AND u.isDeleted = false
            """)
     Optional<User> findByUsernameOrEmail(String usernameOrEmail);
+
+    Optional<User> findByUsername(String username);
 }

@@ -4,19 +4,19 @@ import com.eCommerce.product.model.request.ProductPurchaseRequest;
 import com.eCommerce.product.model.request.ProductRequest;
 import com.eCommerce.product.model.response.ProductPurchaseResponse;
 import com.eCommerce.product.model.response.ProductResponse;
+import org.springframework.data.domain.Page;
 
 import java.util.List;
 
 public interface ProductService {
 
-    Integer addProduct(ProductRequest request);
+    Long addProduct(ProductRequest request);
 
     List<ProductPurchaseResponse> purchaseProduct(List<ProductPurchaseRequest> request);
 
-    ProductResponse getProductDetail(Integer productId);
+    ProductResponse getProductDetail(Long productId);
 
-    List<ProductResponse> getAllProductInCategory(Integer categoryId);
+    Page<ProductResponse> getAllProductInCategory(Long categoryId, int page, int size);
 
-    List<ProductResponse> getAllProducts();
-
+    Page<ProductResponse> getAllProducts(int page, int size);
 }

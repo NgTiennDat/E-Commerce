@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourcePerFileMappings">
+    <file url="file://$APPLICATION_CONFIG_DIR$/consoles/db/26076997-bdc3-47cb-b848-51ec9d367d49/console.sql" value="26076997-bdc3-47cb-b848-51ec9d367d49" />
     <file url="file://$APPLICATION_CONFIG_DIR$/consoles/db/62382e50-95e2-4ddc-a969-60d90abe95f3/console.sql" value="62382e50-95e2-4ddc-a969-60d90abe95f3" />
     <file url="file://$PROJECT_DIR$/services/product/src/main/resources/db/migration/V1__init_database.sql" value="26076997-bdc3-47cb-b848-51ec9d367d49" />
     <file url="file://$PROJECT_DIR$/services/product/src/main/resources/db/migration/V2__insert_database.sql" value="26076997-bdc3-47cb-b848-51ec9d367d49" />

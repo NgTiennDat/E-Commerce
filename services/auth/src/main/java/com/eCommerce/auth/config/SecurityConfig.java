@@ -28,7 +28,7 @@ public class SecurityConfig {
 
     String[] permitAllEndpoints = {
             "/api/v1/auth/**",
-            "/api/v1/user/**",
+            "/api/v1/user/register",
             "/v3/api-docs/**",
             "/oauth2/**",
             "/login/oauth2/code/**",
