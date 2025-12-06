@@ -1,6 +1,7 @@
 package com.eCommerce.product.service.mapper;
 
 import com.eCommerce.product.model.dto.CategoryDto;
+import com.eCommerce.product.model.request.CategoryResponse;
 import com.eCommerce.product.model.entity.Category;
 
 import java.util.List;
@@ -19,7 +20,6 @@ public final class CategoryMapper {
         if (category == null) {
             return null;
         }
-
         return CategoryDto.builder()
                 .id(category.getId())
                 .name(category.getName())
@@ -35,7 +35,7 @@ public final class CategoryMapper {
      * Convert CategoryDto → Category entity
      * (Only use if API cho phép tạo/update category)
      */
-    public static Category toEntity(CategoryDto dto) {
+    public static Category toEntity(CategoryResponse dto) {
         if (dto == null) {
             return null;
         }

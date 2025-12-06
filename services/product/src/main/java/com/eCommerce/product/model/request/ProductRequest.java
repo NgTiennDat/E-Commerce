@@ -37,5 +37,5 @@ public class ProductRequest {
     private Boolean isNew;
 
     @NotNull(message = "Category is mandatory")
-    private Integer categoryId;
+    private Long categoryId;
 }

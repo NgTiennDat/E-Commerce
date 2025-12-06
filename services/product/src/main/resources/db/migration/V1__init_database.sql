@@ -8,10 +8,16 @@ create table if not exists category (
                                         is_active     bit             default b'1',
                                         display_order int,
                                         parent_id     bigint,
+
+                                        created_by    varchar(50),
+                                        created_at    datetime,
+                                        updated_by    varchar(50),
+                                        updated_at    datetime,
+                                        is_deleted    bit             not null default b'0',
+
                                         primary key (id),
                                         unique key uk_category_slug (slug),
-                                        constraint fk_category_parent
-                                            foreign key (parent_id) references category(id)
+                                        constraint fk_category_parent foreign key (parent_id) references category(id)
 );
 
 create table if not exists products (
@@ -31,7 +37,14 @@ create table if not exists products (
                                         is_new             bit             default b'0',
                                         status             enum('ACTIVE','INACTIVE'),
                                         category_id        bigint,
+
+    -- Audit columns
+                                        created_by    varchar(50),
+                                        created_at    datetime,
+                                        updated_by    varchar(50),
+                                        updated_at    datetime,
+                                        is_deleted    bit             not null default b'0',
+
                                         primary key (id),
-                                        constraint fk_products_category
-                                            foreign key (category_id) references category(id)
+                                        constraint fk_products_category foreign key (category_id) references category(id)
 );

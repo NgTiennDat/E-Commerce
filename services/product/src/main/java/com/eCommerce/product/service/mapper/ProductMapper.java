@@ -1,8 +1,12 @@
 package com.eCommerce.product.service.mapper;
 
 import com.eCommerce.product.model.dto.CategoryDto;
+import com.eCommerce.product.model.projection.ProductListProjection;
+import com.eCommerce.product.model.request.CategoryResponse;
 import com.eCommerce.product.model.entity.Category;
 import com.eCommerce.product.model.entity.Product;
+import com.eCommerce.product.model.enumn.ProductStatus;
+import com.eCommerce.product.model.projection.RelatedProductProjection;
 import com.eCommerce.product.model.request.ProductRequest;
 import com.eCommerce.product.model.response.ProductPurchaseResponse;
 import com.eCommerce.product.model.response.ProductResponse;
@@ -68,7 +72,57 @@ public class ProductMapper {
                 .ratingCount(product.getRatingCount())
                 .isFeatured(product.getIsFeatured())
                 .isNew(product.getIsNew())
+                .status(product.getStatus())
                 .category(toCategoryDto(product.getCategory()))
+                .build();
+    }
+
+    public ProductResponse mapToProductResponse(ProductListProjection p) {
+        // Tính finalPrice & inStock ở tầng service
+        BigDecimal price = p.getPrice();
+        Integer discountPercent = p.getDiscountPercent();
+        BigDecimal finalPrice = price;
+
+        if (price != null && discountPercent != null && discountPercent > 0) {
+            BigDecimal discount = price
+                    .multiply(BigDecimal.valueOf(discountPercent))
+                    .divide(BigDecimal.valueOf(100));
+            finalPrice = price.subtract(discount);
+        }
+
+        boolean inStock = p.getAvailableQuantity() != null && p.getAvailableQuantity() > 0;
+
+        CategoryDto categoryDto = null;
+        if (p.getCategoryId() != null) {
+            categoryDto = CategoryDto.builder()
+                    .id(p.getCategoryId())
+                    .name(p.getCategoryName())
+                    .description(p.getCategoryDescription())
+                    .slug(p.getCategorySlug())
+                    .imageUrl(p.getCategoryImageUrl())
+                    .icon(p.getCategoryIcon())
+                    .isActive(p.getCategoryIsActive())
+                    .build();
+        }
+
+        return ProductResponse.builder()
+                .id(p.getId())
+                .sku(p.getSku())
+                .name(p.getName())
+                .shortDescription(p.getShortDescription())
+                .description(p.getDescription())
+                .price(price)
+                .finalPrice(finalPrice)
+                .discountPercent(discountPercent)
+                .availableQuantity(p.getAvailableQuantity())
+                .inStock(inStock)
+                .imageUrl(p.getImageUrl())
+                .brand(p.getBrand())
+                .rating(p.getRating())
+                .ratingCount(p.getRatingCount())
+                .isFeatured(p.getIsFeatured())
+                .isNew(p.getIsNew())
+                .category(categoryDto)
                 .build();
     }
 
@@ -129,5 +183,50 @@ public class ProductMapper {
      */
     private CategoryDto toCategoryDto(Category category) {
         return CategoryMapper.toDto(category);
+    }
+
+    public ProductResponse fromRelatedProjection(RelatedProductProjection p) {
+        BigDecimal price = p.getPrice();
+        Integer discountPercent = p.getDiscountPercent();
+
+        BigDecimal finalPrice = (price != null && discountPercent != null && discountPercent > 0)
+                ? price.subtract(
+                price
+                        .multiply(BigDecimal.valueOf(discountPercent))
+                        .divide(BigDecimal.valueOf(100))
+        )
+                : price;
+
+        boolean inStock = p.getAvailableQuantity() != null && p.getAvailableQuantity() > 0;
+
+        CategoryDto category = CategoryDto.builder()
+                .id(p.getCategoryId())
+                .name(p.getCategoryName())
+                .slug(p.getCategorySlug())
+                .imageUrl(p.getCategoryImageUrl())
+                .icon(p.getCategoryIcon())
+                .build();
+
+        return ProductResponse.builder()
+                .id(p.getId())
+                .sku(p.getSku())
+                .name(p.getName())
+                .shortDescription(p.getShortDescription())
+                .description(p.getDescription())
+                .price(price)
+                .finalPrice(finalPrice)
+                .discountPercent(discountPercent)
+                .availableQuantity(p.getAvailableQuantity())
+                .inStock(inStock)
+                .imageUrl(p.getImageUrl())
+                .brand(p.getBrand())
+                .rating(p.getRating())
+                .ratingCount(p.getRatingCount())
+                .isFeatured(p.getIsFeatured())
+                .isNew(p.getIsNew())
+                // Related product chắc chắn ACTIVE vì đã filter ở query
+                .status(ProductStatus.ACTIVE)
+                .category(category)
+                .build();
     }
 }

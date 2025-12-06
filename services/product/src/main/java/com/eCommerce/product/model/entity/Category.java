@@ -23,7 +23,7 @@ import java.util.List;
 @Builder
 @Entity
 @Table(name = "category")
-public class Category {
+public class Category extends Audit {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
