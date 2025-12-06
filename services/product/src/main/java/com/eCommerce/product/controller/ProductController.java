@@ -1,16 +1,25 @@
 package com.eCommerce.product.controller;
 
 import com.eCommerce.common.payload.Response;
+import com.eCommerce.product.model.enumn.ProductStatus;
 import com.eCommerce.product.model.request.ProductPurchaseRequest;
 import com.eCommerce.product.model.request.ProductRequest;
-import com.eCommerce.product.model.response.ProductPurchaseResponse;
 import com.eCommerce.product.model.response.ProductResponse;
 import com.eCommerce.product.service.ProductService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -40,7 +49,7 @@ public class ProductController {
         return ResponseEntity.ok(Response.ofSucceeded(productService.getProductDetail(productId)));
     }
 
-    @GetMapping("/{categoryId}")
+    @GetMapping("/category/{categoryId}")
     public ResponseEntity<?> getAllProductInCategory(
             @PathVariable("categoryId") Long categoryId,
             @RequestParam(defaultValue = "0") int page,
@@ -49,11 +58,61 @@ public class ProductController {
         return ResponseEntity.ok(Response.ofSucceeded(productService.getAllProductInCategory(categoryId, page, size)));
     }
 
-    @GetMapping("/all-product")
-    public ResponseEntity<?> getAllProduct(
+    @GetMapping
+    public ResponseEntity<?> getProducts(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) ProductStatus status,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(required = false) String brand,
+            @RequestParam(required = false) Boolean isFeatured,
+            @RequestParam(required = false) Boolean isNew
     ) {
-        return ResponseEntity.ok(Response.ofSucceeded(productService.getAllProducts(page, size)));
+        return ResponseEntity.ok(
+                Response.ofSucceeded(
+                        productService.getProducts(
+                                page,
+                                size,
+                                keyword,
+                                categoryId,
+                                status,
+                                minPrice,
+                                maxPrice,
+                                brand,
+                                isFeatured,
+                                isNew
+                        )
+                )
+        );
+    }
+
+
+    @PatchMapping("/{productId}")
+    public ResponseEntity<?> updateProduct(
+            @PathVariable("productId") Long productId,
+            @RequestBody ProductRequest request
+    ) {
+        productService.updateProduct(productId, request);
+        return ResponseEntity.ok(Response.ofSucceeded(HttpStatus.OK));
+    }
+
+    @DeleteMapping("{productId}")
+    public ResponseEntity<?> deleteProduct(
+            @PathVariable("productId") Long productId
+    ) {
+        productService.deleteProduct(productId);
+        return ResponseEntity.ok(Response.ofSucceeded(HttpStatus.OK));
+    }
+
+    @GetMapping("/{productId}/related")
+    public ResponseEntity<?> getRelatedProducts(
+            @PathVariable Long productId,
+            @RequestParam(name = "limit", defaultValue = "10") int limit
+    ) {
+        List<ProductResponse> related = productService.getRelatedProducts(productId, limit);
+        return ResponseEntity.ok(related);
     }
 }

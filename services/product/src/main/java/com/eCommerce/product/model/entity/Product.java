@@ -24,7 +24,7 @@ import java.math.BigDecimal;
 @Builder
 @Entity
 @Table(name = "products")
-public class Product {
+public class Product extends Audit {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

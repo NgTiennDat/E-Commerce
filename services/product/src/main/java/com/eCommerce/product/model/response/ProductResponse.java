@@ -1,6 +1,7 @@
 package com.eCommerce.product.model.response;
 
 import com.eCommerce.product.model.dto.CategoryDto;
+import com.eCommerce.product.model.enumn.ProductStatus;
 import lombok.Builder;
 import lombok.Data;
 
@@ -35,6 +36,8 @@ public class ProductResponse {
 
     private Boolean isFeatured;
     private Boolean isNew;
+
+    private ProductStatus status;
 
     private CategoryDto category;
 }
