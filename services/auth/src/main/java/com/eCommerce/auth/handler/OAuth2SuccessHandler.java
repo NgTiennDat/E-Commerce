@@ -1,7 +1,7 @@
 package com.eCommerce.auth.handler;
 
 import com.eCommerce.auth.repository.UserRepository;
-import com.eCommerce.auth.utils.JwtUtils;
+import com.eCommerce.common.security.JwtUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

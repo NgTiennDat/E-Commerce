@@ -22,7 +22,10 @@ public enum ResponseCode {
 
     // ======= Product ========
     PRODUCT_NOT_FOUND("PRD_404", "Product not found", HttpStatus.NOT_FOUND),
-    PRODUCT_QUANTITY_NOT_ENOUGH("PRD_400", "Product quantity not enough", HttpStatus.BAD_REQUEST);
+    PRODUCT_QUANTITY_NOT_ENOUGH("PRD_400", "Product quantity not enough", HttpStatus.BAD_REQUEST),
+
+    // ======= Category ========
+    CATEGORY_NOT_FOUND("CAT_404", "Category not found" , HttpStatus.NOT_FOUND ),;
 
 
     private final String code;
