@@ -38,4 +38,5 @@ public class ProductRequest {
 
     @NotNull(message = "Category is mandatory")
     private Long categoryId;
+
 }

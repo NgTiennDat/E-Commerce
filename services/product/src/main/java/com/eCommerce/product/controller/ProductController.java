@@ -63,7 +63,7 @@ public class ProductController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) String categoryName,
             @RequestParam(required = false) ProductStatus status,
             @RequestParam(required = false) BigDecimal minPrice,
             @RequestParam(required = false) BigDecimal maxPrice,
@@ -77,7 +77,7 @@ public class ProductController {
                                 page,
                                 size,
                                 keyword,
-                                categoryId,
+                                categoryName,
                                 status,
                                 minPrice,
                                 maxPrice,
@@ -88,7 +88,6 @@ public class ProductController {
                 )
         );
     }
-
 
     @PatchMapping("/{productId}")
     public ResponseEntity<?> updateProduct(
@@ -112,7 +111,6 @@ public class ProductController {
             @PathVariable Long productId,
             @RequestParam(name = "limit", defaultValue = "10") int limit
     ) {
-        List<ProductResponse> related = productService.getRelatedProducts(productId, limit);
-        return ResponseEntity.ok(related);
+        return ResponseEntity.ok(Response.ofSucceeded(productService.getRelatedProducts(productId, limit)));
     }
 }

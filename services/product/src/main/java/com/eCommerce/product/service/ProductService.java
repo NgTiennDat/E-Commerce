@@ -24,7 +24,7 @@ public interface ProductService {
             int page,
             int size,
             String keyword,
-            Long categoryId,
+            String categoryName,
             ProductStatus status,
             BigDecimal minPrice,
             BigDecimal maxPrice,

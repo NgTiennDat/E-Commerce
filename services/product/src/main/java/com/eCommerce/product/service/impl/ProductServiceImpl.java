@@ -228,7 +228,7 @@ public class ProductServiceImpl implements ProductService {
      *
      * Parameters:
      *  - keyword (name, brand, description)
-     *  - categoryId
+     *  - categoryName
      *  - status
      *  - minPrice & maxPrice
      *  - brand
@@ -243,7 +243,7 @@ public class ProductServiceImpl implements ProductService {
             int page,
             int size,
             String keyword,
-            Long categoryId,
+            String categoryName,
             ProductStatus status,
             BigDecimal minPrice,
             BigDecimal maxPrice,
@@ -256,7 +256,7 @@ public class ProductServiceImpl implements ProductService {
 
             Page<ProductListProjection> projectionPage = productRepository.searchProducts(
                     keyword,
-                    categoryId,
+                    categoryName,
                     status != null ? status.name() : null,
                     minPrice,
                     maxPrice,
