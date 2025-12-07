@@ -18,10 +18,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     Page<Product> findAllByCategoryId(Long categoryId, Pageable pageable);
 
-    Page<Product> findByCategoryIdAndIdNotAndStatus(
-            Long categoryId, Long productId, ProductStatus productStatus, Pageable pageable
-    );
-
     @Query(
             value = """
             SELECT
@@ -58,7 +54,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                      OR LOWER(p.short_description) LIKE LOWER(CONCAT('%', :keyword, '%'))
                      OR LOWER(p.sku) LIKE LOWER(CONCAT('%', :keyword, '%'))
                 )
-                AND (:categoryId IS NULL OR p.category_id = :categoryId)
+                AND (:categoryName IS NULL OR LOWER(c.name) LIKE LOWER(CONCAT('%', :categoryName , '%')))
                 AND (:status IS NULL OR p.status = :status)
                 AND (:minPrice IS NULL OR p.price >= :minPrice)
                 AND (:maxPrice IS NULL OR p.price <= :maxPrice)
@@ -77,7 +73,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                      OR LOWER(p.short_description) LIKE LOWER(CONCAT('%', :keyword, '%'))
                      OR LOWER(p.sku) LIKE LOWER(CONCAT('%', :keyword, '%'))
                 )
-                AND (:categoryId IS NULL OR p.category_id = :categoryId)
+                AND (:categoryName IS NULL OR c.name = :categoryName)
                 AND (:status IS NULL OR p.status = :status)
                 AND (:minPrice IS NULL OR p.price >= :minPrice)
                 AND (:maxPrice IS NULL OR p.price <= :maxPrice)
@@ -89,7 +85,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     )
     Page<ProductListProjection> searchProducts(
             @Param("keyword") String keyword,
-            @Param("categoryId") Long categoryId,
+            @Param("categoryName") String categoryName,
             @Param("status") String status,
             @Param("minPrice") BigDecimal minPrice,
             @Param("maxPrice") BigDecimal maxPrice,
