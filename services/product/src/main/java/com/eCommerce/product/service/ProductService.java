@@ -38,4 +38,6 @@ public interface ProductService {
     void deleteProduct(Long productId);
 
     List<ProductResponse> getRelatedProducts(Long productId, int limit);
+
+    void updateProductStatus(Long productId, ProductStatus status);
 }

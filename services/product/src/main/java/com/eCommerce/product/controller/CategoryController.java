@@ -17,8 +17,13 @@ public class CategoryController {
 
     private final CategoryService categoryService;
 
-//    @GetMapping
-//    public ResponseEntity<?> getCategories() {
-//        return ResponseEntity.of(Response.ofSucceeded(categoryService.getAllCategories()));
-//    }
+    @GetMapping("/all")
+    public ResponseEntity<?> getCategories() {
+        return ResponseEntity.ok(Response.ofSucceeded(categoryService.getCategories()));
+    }
+
+    @GetMapping("/{categoryId}")
+    public ResponseEntity<?> getCategoryDetail(Long categoryId) {
+        return ResponseEntity.ok(Response.ofSucceeded(categoryService.getCategoryDetail(categoryId)));
+    }
 }

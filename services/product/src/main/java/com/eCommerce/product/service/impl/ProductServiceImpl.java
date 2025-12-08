@@ -375,5 +375,23 @@ public class ProductServiceImpl implements ProductService {
             throw new CustomException(ResponseCode.INTERNAL_SERVER_ERROR);
         }
     }
+
+    @Override
+    public void updateProductStatus(Long productId, ProductStatus status) {
+        try {
+            Product product = productRepository.findById(productId)
+                    .orElseThrow(() -> new CustomException(ResponseCode.PRODUCT_NOT_FOUND));
+
+            product.setStatus(status);
+            product.setUpdatedAt(LocalDateTime.now());
+            product.setUpdatedBy("SYSTEM");
+
+            productRepository.save(product);
+
+        } catch (Exception e) {
+            log.error("[updateProductStatus] Error: {}", e.getMessage(), e);
+            throw new CustomException(ResponseCode.INTERNAL_SERVER_ERROR);
+        }
+    }
 }
 

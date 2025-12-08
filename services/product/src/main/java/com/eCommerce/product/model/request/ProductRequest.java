@@ -10,13 +10,16 @@ import java.math.BigDecimal;
 @Data
 public class ProductRequest {
 
+    @NotBlank(message = "SKU is mandatory")
     private String sku;
 
     @NotBlank(message = "Product name is mandatory")
     private String name;
 
+    @NotBlank(message = "Short description is mandatory")
     private String shortDescription;
 
+    @NotBlank(message = "Description is mandatory")
     private String description;
 
     @NotNull(message = "Price is mandatory")
@@ -30,6 +33,7 @@ public class ProductRequest {
 
     private String imageUrl;
 
+    @NotBlank(message = "Brand is mandatory")
     private String brand;
 
     private Boolean isFeatured;
