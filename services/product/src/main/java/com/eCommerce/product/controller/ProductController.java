@@ -27,13 +27,6 @@ import java.util.List;
 public class ProductController {
     private final ProductService productService;
 
-    @PostMapping("/add-product")
-    public ResponseEntity<?> addProduct(
-            @RequestBody ProductRequest request
-    ) {
-        return ResponseEntity.ok(Response.ofSucceeded(productService.addProduct(request)));
-    }
-
     @PostMapping("/purchase")
     public ResponseEntity<?> purchaseProducts(
             @RequestBody List<ProductPurchaseRequest> request
@@ -88,23 +81,6 @@ public class ProductController {
         );
     }
 
-    @PatchMapping("/{productId}")
-    public ResponseEntity<?> updateProduct(
-            @PathVariable("productId") Long productId,
-            @RequestBody ProductRequest request
-    ) {
-        productService.updateProduct(productId, request);
-        return ResponseEntity.ok(Response.ofSucceeded(HttpStatus.OK));
-    }
-
-    @DeleteMapping("/{productId}")
-    public ResponseEntity<?> deleteProduct(
-            @PathVariable("productId") Long productId
-    ) {
-        productService.deleteProduct(productId);
-        return ResponseEntity.ok(Response.ofSucceeded(HttpStatus.OK));
-    }
-
     @GetMapping("/{productId}/related")
     public ResponseEntity<?> getRelatedProducts(
             @PathVariable Long productId,
@@ -113,12 +89,4 @@ public class ProductController {
         return ResponseEntity.ok(Response.ofSucceeded(productService.getRelatedProducts(productId, limit)));
     }
 
-    @PatchMapping("/{productId}/status")
-    public ResponseEntity<?> updateProductStatus(
-            @PathVariable Long productId,
-            @RequestParam ProductStatus status
-    ) {
-        productService.updateProductStatus(productId, status);
-        return ResponseEntity.ok(Response.ofSucceeded(HttpStatus.OK));
-    }
 }

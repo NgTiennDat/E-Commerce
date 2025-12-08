@@ -9,13 +9,19 @@ import org.springframework.core.Ordered;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.web.server.ServerWebExchange;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -25,16 +31,22 @@ public class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
     private final JwtUtils jwtUtils;
     private static final AntPathMatcher pathMatcher = new AntPathMatcher();
 
-    // Các path public không cần JWT (login, register, swagger, v.v.)
+    // Các path public không cần JWT
     private static final List<String> WHITE_LIST = List.of(
-            "/auth-service/api/v1/auth/login",
-            "/auth-service/api/v1/users/register",
-            "/auth-service/api/v1/auth/refresh-token",
-            "/api/v1/products/",
+            // Auth public
+            "/api/v1/auth/login",
+            "/api/v1/users/register",
+            "/api/v1/auth/refresh-token",
+
+            // Sản phẩm public cho khách (tùy chiến lược, ví dụ cho phép GET)
+            "/api/v1/products",
             "/api/v1/products/*/related",
-            "/eureka",
-            "/actuator",
-            "/swagger", "/v3/api-docs"
+
+            // system
+            "/eureka/**",
+            "/actuator/**",
+            "/swagger-ui/**",
+            "/v3/api-docs/**"
     );
 
     @Override
@@ -42,8 +54,9 @@ public class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
         String path = exchange.getRequest().getURI().getPath();
         log.debug("[Gateway] Incoming request path: {}", path);
 
-        // Nếu path thuộc whitelist thì bỏ qua filter
+        // Nếu path thuộc whitelist thì bỏ qua filter (không cần JWT)
         if (isWhitelisted(path)) {
+            log.debug("[Gateway] Path {} is whitelisted, skip JWT filter", path);
             return chain.filter(exchange);
         }
 
@@ -59,15 +72,25 @@ public class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
         }
 
         String username = jwtUtils.extractUsername(token);
-        var roles = jwtUtils.extractRoles(token);
+        List<String> roles = jwtUtils.extractRoles(token);
+        List<GrantedAuthority> authorities = roles.stream()
+                .map(SimpleGrantedAuthority::new)
+                .collect(Collectors.toList());
 
+        Authentication authentication =
+                new UsernamePasswordAuthenticationToken(username, null, authorities);
+
+        // Đính thêm header để các service phía sau đọc được (nếu muốn)
         var mutatedRequest = exchange.getRequest().mutate()
                 .header("X-User-Name", username)
                 .header("X-User-Roles", String.join(",", roles))
                 .build();
 
         var mutatedExchange = exchange.mutate().request(mutatedRequest).build();
-        return chain.filter(mutatedExchange);
+
+        // ⚡ Quan trọng: set Authentication vào ReactiveSecurityContextHolder
+        return chain.filter(mutatedExchange)
+                .contextWrite(ReactiveSecurityContextHolder.withAuthentication(authentication));
     }
 
     private boolean isWhitelisted(String path) {
@@ -82,7 +105,7 @@ public class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
         String body = """
-                {    
+                {
                   "code": 401,
                   "message": "%s"
                 }

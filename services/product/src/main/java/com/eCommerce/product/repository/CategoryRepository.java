@@ -21,6 +21,40 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
                     c.isActive
                 )
             FROM Category c
+            WHERE (:isActive IS NULL OR :isActive = c.isActive)
+            ORDER BY c.createdAt DESC
             """)
-    List<CategoryDto> findAllCategory();
+    List<CategoryDto> findAllCategory(Boolean isActive);
+
+    @Query("""
+            SELECT new com.eCommerce.product.model.dto.CategoryDto(
+                    c.id,
+                    c.name,
+                    c.description,
+                    c.slug,
+                    c.imageUrl,
+                    c.icon,
+                    c.isActive
+                )
+            FROM Category c
+            WHERE c.id = :categoryId
+            AND c.isActive = true
+            """)
+    CategoryDto findCateById(Long categoryId);
+
+    @Query("""
+            SELECT new com.eCommerce.product.model.dto.CategoryDto(
+                    c.id,
+                    c.name,
+                    c.description,
+                    c.slug,
+                    c.imageUrl,
+                    c.icon,
+                    c.isActive
+                )
+            FROM Category c
+            WHERE c.slug = :slug
+            AND c.isActive = true
+            """)
+    CategoryDto findCateBySlug(String slug);
 }
