@@ -1,6 +1,6 @@
-package com.eCommerce.auth.client;
+package com.eCommerce.gateway.client;
 
-import com.eCommerce.auth.model.request.RbacCheckRequest;
+import com.eCommerce.gateway.request.RbacCheckRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;

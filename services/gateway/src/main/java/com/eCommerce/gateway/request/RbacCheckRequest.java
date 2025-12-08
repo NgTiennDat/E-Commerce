@@ -1,4 +1,4 @@
-package com.eCommerce.auth.model.request;
+package com.eCommerce.gateway.request;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

@@ -13,6 +13,10 @@ application:
 app:
   jwt:
     enabled: true
+
+auth-service:
+  base-url: http://AUTH-SERVICE
+
 redis:
   host: 127.0.0.1
   port: 6379

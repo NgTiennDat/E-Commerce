@@ -1,6 +1,6 @@
 package com.eCommerce.gateway.manager;
 
-import com.eCommerce.auth.client.RbacClient;
+import com.eCommerce.gateway.client.RbacClient;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.authorization.ReactiveAuthorizationManager;
