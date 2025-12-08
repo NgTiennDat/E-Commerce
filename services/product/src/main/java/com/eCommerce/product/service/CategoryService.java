@@ -1,7 +1,11 @@
 package com.eCommerce.product.service;
 
-import org.springframework.data.domain.Page;
+import com.eCommerce.product.model.dto.CategoryDto;
+
+import java.util.List;
 
 public interface CategoryService {
-//    <T> Page<T> getAllCategories();
+    List<CategoryDto> getCategories();
+
+    Object getCategoryDetail(Long categoryId);
 }

@@ -4,7 +4,6 @@ import com.eCommerce.common.payload.Response;
 import com.eCommerce.product.model.enumn.ProductStatus;
 import com.eCommerce.product.model.request.ProductPurchaseRequest;
 import com.eCommerce.product.model.request.ProductRequest;
-import com.eCommerce.product.model.response.ProductResponse;
 import com.eCommerce.product.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -98,7 +97,7 @@ public class ProductController {
         return ResponseEntity.ok(Response.ofSucceeded(HttpStatus.OK));
     }
 
-    @DeleteMapping("{productId}")
+    @DeleteMapping("/{productId}")
     public ResponseEntity<?> deleteProduct(
             @PathVariable("productId") Long productId
     ) {
@@ -112,5 +111,14 @@ public class ProductController {
             @RequestParam(name = "limit", defaultValue = "10") int limit
     ) {
         return ResponseEntity.ok(Response.ofSucceeded(productService.getRelatedProducts(productId, limit)));
+    }
+
+    @PatchMapping("/{productId}/status")
+    public ResponseEntity<?> updateProductStatus(
+            @PathVariable Long productId,
+            @RequestParam ProductStatus status
+    ) {
+        productService.updateProductStatus(productId, status);
+        return ResponseEntity.ok(Response.ofSucceeded(HttpStatus.OK));
     }
 }
