@@ -22,10 +22,7 @@ public class GatewaySecurityConfig {
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchanges -> exchanges
-                        // public path
-                        .pathMatchers("/actuator/**", "/eureka/**", "/swagger-ui/**", "/v3/api-docs/**")
-                        .permitAll()
-                        // các path còn lại → check RBAC
+                        .pathMatchers(PublicRoutes.routesArray()).permitAll()
                         .anyExchange()
                         .access(authorizationManager)
                 )

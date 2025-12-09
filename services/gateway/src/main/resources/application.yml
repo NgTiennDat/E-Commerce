@@ -17,7 +17,7 @@ app:
     enabled: true
 
 auth-service:
-  base-url: http://AUTH-SERVICE
+  base-url: lb://auth-service
 
 redis:
   host: 127.0.0.1
