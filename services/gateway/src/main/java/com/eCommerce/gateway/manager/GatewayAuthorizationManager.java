@@ -17,28 +17,25 @@ public class GatewayAuthorizationManager implements ReactiveAuthorizationManager
     private final RbacClient rbacClient;
 
     @Override
-    public Mono<AuthorizationDecision> check(Mono<Authentication> authentication, AuthorizationContext context) {
+    public Mono<AuthorizationDecision> check(Mono<Authentication> authentication,
+                                             AuthorizationContext context) {
 
         ServerWebExchange exchange = context.getExchange();
         String method = exchange.getRequest().getMethod().name();
         String path = exchange.getRequest().getURI().getPath();
 
-        if (isPublicPath(path)) {
-            return Mono.just(new AuthorizationDecision(true));
-        }
+        // Các path public đã được permitAll ở SecurityConfig
+        // nên AuthorizationManager sẽ KHÔNG được gọi cho các path đó.
 
         return authentication
+                .doOnNext(auth -> System.out.println(">> Auth in manager: " + auth))
                 .filter(Authentication::isAuthenticated)
-                .flatMap(auth -> rbacClient.hasPermission(auth.getName(), method, path)
-                        .map(AuthorizationDecision::new))
-                .defaultIfEmpty(new AuthorizationDecision(false));
-    }
-
-    private boolean isPublicPath(String path) {
-        return path.startsWith("/api/v1/auth")
-                || path.startsWith("/actuator")
-                || path.startsWith("/eureka")
-                || path.startsWith("/swagger")
-                || path.startsWith("/v3/api-docs");
+                .flatMap(auth -> {
+                    System.out.println(">> CALL RBAC with " + auth.getName() + " " + method + " " + path);
+                    return rbacClient.hasPermission(auth.getName(), method, path)
+                            .map(AuthorizationDecision::new);
+                })
+                .defaultIfEmpty(new AuthorizationDecision(false)
+        );
     }
 }

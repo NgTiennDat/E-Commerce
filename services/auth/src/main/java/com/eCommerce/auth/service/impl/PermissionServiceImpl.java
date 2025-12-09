@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.AntPathMatcher;
 
 import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class PermissionServiceImpl implements PermissionService {
@@ -17,10 +18,9 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     public boolean hasPermission(String username, String httpMethod, String requestPath) {
-        // Chuẩn hóa method (GET/POST/...)
         String method = httpMethod == null ? "" : httpMethod.toUpperCase();
 
-        // 1. Lấy tất cả permission path của user theo method
+        // 1. Lấy tất cả permissions theo user + method
         List<Permission> permissions =
                 permissionRepository.findAllByUsernameAndMethod(username, method);
 
@@ -28,12 +28,12 @@ public class PermissionServiceImpl implements PermissionService {
             return false;
         }
 
-        // 2. Chuẩn hóa path thực tế
+        // 2. Chuẩn hoá request path
         String path = normalize(requestPath);
 
-        // 3. So khớp pattern trong DB với path thực tế
+        // 3. Match path thực tế với pattern trong DB
         for (Permission p : permissions) {
-            String templatePath = normalize(p.getPath()); // path trong DB
+            String templatePath = normalize(p.getPath());
             if (antPathMatcher.match(templatePath, path)) {
                 return true;
             }
@@ -44,13 +44,12 @@ public class PermissionServiceImpl implements PermissionService {
     private String normalize(String path) {
         if (path == null || path.isBlank()) return "/";
 
-        // bỏ query string nếu có ?page=..., ?size=...
         int qIndex = path.indexOf("?");
         if (qIndex != -1) {
             path = path.substring(0, qIndex);
         }
 
-        String normalized = path.replaceAll("/+", "/"); // chống // hoặc ///
+        String normalized = path.replaceAll("/+", "/");
         if (normalized.length() > 1 && normalized.endsWith("/")) {
             normalized = normalized.substring(0, normalized.length() - 1);
         }

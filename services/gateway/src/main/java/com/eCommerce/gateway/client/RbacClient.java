@@ -20,6 +20,9 @@ public class RbacClient {
     @Value("${auth-service.base-url}")
     private String authServiceBaseUrl;
 
+    /**
+     * Gọi sang Auth-Service để kiểm tra RBAC.
+     */
     public Mono<Boolean> hasPermission(String username, String method, String path) {
         RbacCheckRequest body = new RbacCheckRequest(username, method, path);
 
@@ -30,7 +33,8 @@ public class RbacClient {
                 .retrieve()
                 .bodyToMono(Boolean.class)
                 .onErrorResume(ex -> {
-                    log.error("Failed to check permission for user '{}' on {} {}", username, method, path, ex);
+                    log.error("Failed to check permission for user '{}' on {} {}",
+                            username, method, path, ex);
                     return Mono.just(Boolean.FALSE);
                 });
     }
