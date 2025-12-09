@@ -35,10 +35,13 @@ public class CustomAuthorizationManager implements AuthorizationManager<RequestA
         }
 
         HttpServletRequest request = requestContext.getRequest();
-        String username = ((User) auth.getPrincipal()).getUsername();
-        return userDetailsService.hasPermission(username, request.getServletPath(), request.getMethod())
-                ? new AuthorizationDecision(true)
-                : new AuthorizationDecision(false);
+        Object principal = auth.getPrincipal();
+        if (!(principal instanceof User user)) {
+            return new AuthorizationDecision(false);
+        }
+
+        boolean allowed = userDetailsService.hasPermission(user.getUsername(), request.getServletPath(), request.getMethod());
+        return new AuthorizationDecision(allowed);
     }
 
     /**

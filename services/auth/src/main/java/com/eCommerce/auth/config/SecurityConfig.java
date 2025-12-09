@@ -21,12 +21,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final AuthenticationProvider authProvider;
-    private final JwtAuthFilter jwtAuthFilter;
-    private final CustomOAuth2UserService customOAuth2UserService;
-    private final OAuth2SuccessHandler oAuth2SuccessHandler;
-
-    String[] permitAllEndpoints = {
+    private static final String[] PERMIT_ALL_ENDPOINTS = {
             "/api/v1/auth/**",
             "/api/v1/user/register",
             "/v3/api-docs/**",
@@ -43,19 +38,22 @@ public class SecurityConfig {
             "/topic/**",
     };
 
+    private final AuthenticationProvider authProvider;
+    private final JwtAuthFilter jwtAuthFilter;
+    private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2SuccessHandler oAuth2SuccessHandler;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(permitAllEndpoints)
+                        .requestMatchers(PERMIT_ALL_ENDPOINTS)
                         .permitAll()
                         .anyRequest()
                         .authenticated()
                 )
-
-                // 🔑 Khi không có JWT thì trả về 401 thay vì redirect
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((request, response, authException) -> {
                             response.setContentType("application/json");

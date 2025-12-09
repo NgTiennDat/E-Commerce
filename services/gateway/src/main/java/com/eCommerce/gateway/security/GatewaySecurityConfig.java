@@ -14,6 +14,13 @@ import org.springframework.security.web.server.SecurityWebFilterChain;
 @RequiredArgsConstructor
 public class GatewaySecurityConfig {
 
+    private static final String[] PUBLIC_PATHS = {
+            "/actuator/**",
+            "/eureka/**",
+            "/swagger-ui/**",
+            "/v3/api-docs/**"
+    };
+
     private final GatewayAuthorizationManager authorizationManager;
 
     @Bean
@@ -22,10 +29,7 @@ public class GatewaySecurityConfig {
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchanges -> exchanges
-                        // public path
-                        .pathMatchers("/actuator/**", "/eureka/**", "/swagger-ui/**", "/v3/api-docs/**")
-                        .permitAll()
-                        // các path còn lại → check RBAC
+                        .pathMatchers(PUBLIC_PATHS).permitAll()
                         .anyExchange()
                         .access(authorizationManager)
                 )

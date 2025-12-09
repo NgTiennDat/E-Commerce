@@ -17,36 +17,24 @@ public class GatewayAuthorizationManager implements ReactiveAuthorizationManager
     private final RbacClient rbacClient;
 
     @Override
-    public Mono<AuthorizationDecision> check(Mono<Authentication> authentication,
-                                             AuthorizationContext context) {
+    public Mono<AuthorizationDecision> check(Mono<Authentication> authentication, AuthorizationContext context) {
 
         ServerWebExchange exchange = context.getExchange();
         String method = exchange.getRequest().getMethod().name();
-        String path   = exchange.getRequest().getURI().getPath();
+        String path = exchange.getRequest().getURI().getPath();
 
-        // Bỏ qua các path public
-        if (isPublicPath(method, path)) {
+        if (isPublicPath(path)) {
             return Mono.just(new AuthorizationDecision(true));
         }
 
         return authentication
                 .filter(Authentication::isAuthenticated)
-                .flatMap(auth -> {
-                    String username = auth.getName(); // lấy từ SecurityContext
-
-                    // Nếu RbacClient là REACTIVE (trả về Mono<Boolean>):
-                    return rbacClient.hasPermission(username, method, path)
-                            .map(AuthorizationDecision::new);
-
-                    // ❗ Nếu RbacClient là blocking (Feign thường là vậy) thì dùng:
-                    // return Mono.fromCallable(() -> rbacClient.hasPermission(username, method, path))
-                    //         .subscribeOn(Schedulers.boundedElastic())
-                    //         .map(AuthorizationDecision::new);
-                })
+                .flatMap(auth -> rbacClient.hasPermission(auth.getName(), method, path)
+                        .map(AuthorizationDecision::new))
                 .defaultIfEmpty(new AuthorizationDecision(false));
     }
 
-    private boolean isPublicPath(String method, String path) {
+    private boolean isPublicPath(String path) {
         return path.startsWith("/api/v1/auth")
                 || path.startsWith("/actuator")
                 || path.startsWith("/eureka")
