@@ -32,6 +32,10 @@ public class RbacClient {
                 .bodyValue(body)
                 .retrieve()
                 .bodyToMono(Boolean.class)
+                .doOnNext(result ->
+                        log.info(">> RBAC RESULT at gateway for user={} {} {} => {}",
+                                username, method, path, result)
+                )
                 .onErrorResume(ex -> {
                     log.error("Failed to check permission for user '{}' on {} {}",
                             username, method, path, ex);

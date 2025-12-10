@@ -36,6 +36,7 @@ public class SecurityConfig {
             "/webjars/**",
             "/websocket/**",
             "/topic/**",
+            "/internal/rbac/check"
     };
 
     private final AuthenticationProvider authProvider;

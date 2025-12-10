@@ -4,11 +4,13 @@ import com.eCommerce.auth.model.entity.Permission;
 import com.eCommerce.auth.repository.PermissionRepository;
 import com.eCommerce.auth.service.PermissionService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.AntPathMatcher;
 
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PermissionServiceImpl implements PermissionService {
@@ -34,6 +36,8 @@ public class PermissionServiceImpl implements PermissionService {
         // 3. Match path thực tế với pattern trong DB
         for (Permission p : permissions) {
             String templatePath = normalize(p.getPath());
+            log.info("PATH      = [{}] (len = {})", path, path.length());
+            log.info("TEMPLATE  = [{}] (len = {})", templatePath, templatePath.length());
             if (antPathMatcher.match(templatePath, path)) {
                 return true;
             }
@@ -42,17 +46,36 @@ public class PermissionServiceImpl implements PermissionService {
     }
 
     private String normalize(String path) {
-        if (path == null || path.isBlank()) return "/";
+        if (path == null) {
+            return "/";
+        }
 
+        // 1. Bỏ space đầu/cuối
+        path = path.trim();
+
+        if (path.isBlank()) {
+            return "/";
+        }
+
+        // 2. Cắt query string nếu có
         int qIndex = path.indexOf("?");
         if (qIndex != -1) {
             path = path.substring(0, qIndex);
         }
 
+        // 3. Đảm bảo luôn có "/" ở đầu
+        if (!path.startsWith("/")) {
+            path = "/" + path;
+        }
+
+        // 4. Gộp nhiều "/" liên tiếp
         String normalized = path.replaceAll("/+", "/");
+
+        // 5. Bỏ "/" ở cuối (trừ root "/")
         if (normalized.length() > 1 && normalized.endsWith("/")) {
             normalized = normalized.substring(0, normalized.length() - 1);
         }
+
         return normalized;
     }
 }
