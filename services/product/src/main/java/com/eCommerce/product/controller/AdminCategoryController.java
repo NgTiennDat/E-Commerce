@@ -5,7 +5,6 @@ import com.eCommerce.product.model.request.CategoryRequest;
 import com.eCommerce.product.service.CategoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -23,9 +22,7 @@ public class AdminCategoryController {
     public ResponseEntity<?> creatCategory(
             @RequestBody @Valid CategoryRequest request
     ) {
-        categoryService.createCategory(request);
-        return ResponseEntity.ok(Response.ofSucceeded(HttpStatus.CREATED));
+        return ResponseEntity.ok(Response.ofSucceeded(categoryService.createCategory(request)));
     }
-
 
 }

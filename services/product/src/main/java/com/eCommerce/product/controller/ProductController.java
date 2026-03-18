@@ -4,8 +4,10 @@ import com.eCommerce.common.payload.Response;
 import com.eCommerce.product.model.enumn.ProductStatus;
 import com.eCommerce.product.model.request.ProductPurchaseRequest;
 import com.eCommerce.product.model.request.ProductRequest;
+import com.eCommerce.product.model.request.ProductSearchRequest;
 import com.eCommerce.product.service.ProductService;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -52,33 +54,9 @@ public class ProductController {
 
     @GetMapping
     public ResponseEntity<?> getProducts(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String categoryName,
-            @RequestParam(required = false) ProductStatus status,
-            @RequestParam(required = false) BigDecimal minPrice,
-            @RequestParam(required = false) BigDecimal maxPrice,
-            @RequestParam(required = false) String brand,
-            @RequestParam(required = false) Boolean isFeatured,
-            @RequestParam(required = false) Boolean isNew
+            @ParameterObject ProductSearchRequest request
     ) {
-        return ResponseEntity.ok(
-                Response.ofSucceeded(
-                        productService.getProducts(
-                                page,
-                                size,
-                                keyword,
-                                categoryName,
-                                status,
-                                minPrice,
-                                maxPrice,
-                                brand,
-                                isFeatured,
-                                isNew
-                        )
-                )
-        );
+        return ResponseEntity.ok(Response.ofSucceeded(productService.getProducts(request)));
     }
 
     @GetMapping("/{productId}/related")
