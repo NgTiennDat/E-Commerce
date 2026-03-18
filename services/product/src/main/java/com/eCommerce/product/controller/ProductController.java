@@ -4,8 +4,10 @@ import com.eCommerce.common.payload.Response;
 import com.eCommerce.product.model.enumn.ProductStatus;
 import com.eCommerce.product.model.request.ProductPurchaseRequest;
 import com.eCommerce.product.model.request.ProductRequest;
+import com.eCommerce.product.model.request.ProductSearchRequest;
 import com.eCommerce.product.service.ProductService;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -26,13 +28,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ProductController {
     private final ProductService productService;
-
-    @PostMapping("/add-product")
-    public ResponseEntity<?> addProduct(
-            @RequestBody ProductRequest request
-    ) {
-        return ResponseEntity.ok(Response.ofSucceeded(productService.addProduct(request)));
-    }
 
     @PostMapping("/purchase")
     public ResponseEntity<?> purchaseProducts(
@@ -59,50 +54,9 @@ public class ProductController {
 
     @GetMapping
     public ResponseEntity<?> getProducts(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String categoryName,
-            @RequestParam(required = false) ProductStatus status,
-            @RequestParam(required = false) BigDecimal minPrice,
-            @RequestParam(required = false) BigDecimal maxPrice,
-            @RequestParam(required = false) String brand,
-            @RequestParam(required = false) Boolean isFeatured,
-            @RequestParam(required = false) Boolean isNew
+            @ParameterObject ProductSearchRequest request
     ) {
-        return ResponseEntity.ok(
-                Response.ofSucceeded(
-                        productService.getProducts(
-                                page,
-                                size,
-                                keyword,
-                                categoryName,
-                                status,
-                                minPrice,
-                                maxPrice,
-                                brand,
-                                isFeatured,
-                                isNew
-                        )
-                )
-        );
-    }
-
-    @PatchMapping("/{productId}")
-    public ResponseEntity<?> updateProduct(
-            @PathVariable("productId") Long productId,
-            @RequestBody ProductRequest request
-    ) {
-        productService.updateProduct(productId, request);
-        return ResponseEntity.ok(Response.ofSucceeded(HttpStatus.OK));
-    }
-
-    @DeleteMapping("/{productId}")
-    public ResponseEntity<?> deleteProduct(
-            @PathVariable("productId") Long productId
-    ) {
-        productService.deleteProduct(productId);
-        return ResponseEntity.ok(Response.ofSucceeded(HttpStatus.OK));
+        return ResponseEntity.ok(Response.ofSucceeded(productService.getProducts(request)));
     }
 
     @GetMapping("/{productId}/related")
@@ -113,12 +67,4 @@ public class ProductController {
         return ResponseEntity.ok(Response.ofSucceeded(productService.getRelatedProducts(productId, limit)));
     }
 
-    @PatchMapping("/{productId}/status")
-    public ResponseEntity<?> updateProductStatus(
-            @PathVariable Long productId,
-            @RequestParam ProductStatus status
-    ) {
-        productService.updateProductStatus(productId, status);
-        return ResponseEntity.ok(Response.ofSucceeded(HttpStatus.OK));
-    }
 }

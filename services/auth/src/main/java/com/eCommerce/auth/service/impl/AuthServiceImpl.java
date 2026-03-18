@@ -1,10 +1,13 @@
 package com.eCommerce.auth.service.impl;
 
+import com.eCommerce.auth.model.entity.User;
 import com.eCommerce.auth.model.request.LoginRequest;
+import com.eCommerce.auth.model.request.RefreshTokenRequest;
 import com.eCommerce.auth.model.response.AuthResponse;
 import com.eCommerce.auth.model.response.UserResponse;
 import com.eCommerce.auth.repository.UserRepository;
 import com.eCommerce.auth.service.AuthService;
+import com.eCommerce.auth.service.RateLimiterService;
 import com.eCommerce.common.exception.CustomException;
 import com.eCommerce.common.payload.ResponseCode;
 import com.eCommerce.common.redis.service.RedisService;
@@ -20,6 +23,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -27,78 +31,148 @@ import java.util.concurrent.TimeUnit;
 public class AuthServiceImpl implements AuthService {
 
     private static final Logger logger = LogManager.getLogger(AuthServiceImpl.class);
+    private static final String REFRESH_PREFIX = "refresh_token_";
+    private static final String BLACKLIST_PREFIX = "BlackList:";
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
-
     private final RedisService redisService;
+    private final RateLimiterService rateLimiterService;
 
     @Value("${application.security.jwt.refresh-token.expiration}")
     private Long refreshTokenExpiration;
 
-    /**
-     * Performs user login by validating credentials and generating JWT tokens.
-     *
-     * @param loginRequest the login request containing username/email and password
-     * @param request      the HTTP servlet request
-     * @param response     the HTTP servlet response
-     * @return an AuthResponse containing user details and JWT tokens
-     */
-    @Override
-    public AuthResponse doLogin(
-            LoginRequest loginRequest, HttpServletRequest request, HttpServletResponse response
-    ) {
-        try {
+    @Value("${application.security.jwt.expiration}")
+    private Long accessTokenExpiration;
 
-            var user = userRepository.findByUsernameOrEmail(loginRequest.getUsernameOrEmail())
+    @Override
+    public AuthResponse doLogin(LoginRequest loginRequest, HttpServletRequest request, HttpServletResponse response) {
+        // Simple per-IP limiter to slow brute-force; for production use gateway/distributed limiter.
+        String ip = Optional.ofNullable(request.getRemoteAddr()).orElse("unknown");
+        rateLimiterService.assertAllowed("login:" + ip);
+
+        try {
+            User user = userRepository.findByUsernameOrEmail(loginRequest.getUsernameOrEmail())
                     .orElseThrow(() -> new CustomException(ResponseCode.USER_NOT_FOUND));
 
             if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
                 throw new CustomException(ResponseCode.INVALID_CREDENTIALS);
             }
 
-            // 3. Tạo JWT token (AccessToken và RefreshToken)
-            String accessToken = jwtUtils.generateToken(user);
-            String refreshToken = jwtUtils.generateToken(user);
-
-            // 4. Lưu refresh token vào Redis với TTL
-            String refreshTokenKey = "refresh_token_" + user.getId();
-            redisService.setValue(refreshTokenKey, refreshToken, refreshTokenExpiration, TimeUnit.MILLISECONDS);
-
-            logger.info("Refresh Token: {}    RefreshToken type: {}", refreshToken, ((Object) refreshToken).getClass().getName());
-
-            var refreshTokenCookies = new Cookie("refreshToken", refreshToken);
-            refreshTokenCookies.setHttpOnly(true);
-            refreshTokenCookies.setSecure(true);
-            refreshTokenCookies.setPath("/");
-            refreshTokenCookies.setMaxAge((int) (refreshTokenExpiration / 1000));
-            response.addCookie(refreshTokenCookies);
-
-            var userResponse = UserResponse.builder()
-                    .id(user.getId())
-                    .username(user.getUsername())
-                    .email(user.getEmail())
-                    .active(true)
-                    .createdAt(LocalDateTime.now())
-                    .updatedAt(LocalDateTime.now())
-                    .build();
-
-            return AuthResponse.builder()
-                    .user(userResponse)
-                    .accessToken(accessToken)
-                    .refreshToken(refreshToken)
-                    .tokenType("Bearer")
-                    .build();
+            return getAuthResponse(response, user);
         } catch (CustomException e) {
             throw e;
         } catch (Exception e) {
-            logger.error("Error while registering user: {}", e.getMessage(), e);
+            logger.error("Error during login: {}", e.getMessage(), e);
             throw new CustomException(ResponseCode.INTERNAL_SERVER_ERROR);
         }
     }
 
-    public void doLogout() {
+    @Override
+    public AuthResponse refreshToken(RefreshTokenRequest request, HttpServletRequest httpRequest, HttpServletResponse response) {
+        String incoming = request.getRefreshToken();
+        if (incoming == null || incoming.isBlank()) {
+            throw new CustomException(ResponseCode.INVALID_REQUEST);
+        }
 
+        String ip = Optional.ofNullable(httpRequest.getRemoteAddr()).orElse("unknown");
+        rateLimiterService.assertAllowed("refresh:" + ip);
+
+        String username;
+        try {
+            username = jwtUtils.extractUsername(incoming);
+        } catch (Exception ex) {
+            throw new CustomException(ResponseCode.INVALID_CREDENTIALS);
+        }
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new CustomException(ResponseCode.USER_NOT_FOUND));
+
+        String redisKey = REFRESH_PREFIX + user.getId();
+        Object cached = redisService.getValue(redisKey);
+        if (cached == null || !incoming.equals(cached.toString())) {
+            throw new CustomException(ResponseCode.INVALID_CREDENTIALS);
+        }
+
+        return getAuthResponse(response, user);
+    }
+
+    private AuthResponse getAuthResponse(HttpServletResponse response, User user) {
+        String newAccess = jwtUtils.generateToken(user);
+        String newRefresh = jwtUtils.generateToken(user);
+        cacheRefreshToken(user, newRefresh);
+        response.addCookie(buildRefreshCookie(newRefresh));
+
+        return AuthResponse.builder()
+                .user(toUserResponse(user))
+                .accessToken(newAccess)
+                .refreshToken(newRefresh)
+                .tokenType("Bearer")
+                .build();
+    }
+
+    @Override
+    public void logout(HttpServletRequest request, HttpServletResponse response) {
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring("Bearer ".length());
+            long ttl = accessTokenExpiration != null ? accessTokenExpiration : 3600_000L;
+            redisService.setValue(BLACKLIST_PREFIX + token, "revoked", ttl, TimeUnit.MILLISECONDS);
+        }
+
+        String refreshToken = extractRefreshCookie(request);
+        if (refreshToken != null && !refreshToken.isBlank()) {
+            try {
+                String username = jwtUtils.extractUsername(refreshToken);
+                userRepository.findByUsername(username).ifPresent(u ->
+                        redisService.delete(REFRESH_PREFIX + u.getId()));
+            } catch (Exception ignored) {
+                // ignore invalid refresh on logout
+            }
+        }
+
+        Cookie cookie = new Cookie("refreshToken", "");
+        cookie.setHttpOnly(true);
+        cookie.setSecure(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(0);
+        response.addCookie(cookie);
+    }
+
+    private void cacheRefreshToken(User user, String refreshToken) {
+        String refreshTokenKey = REFRESH_PREFIX + user.getId();
+        redisService.setValue(refreshTokenKey, refreshToken, refreshTokenExpiration, TimeUnit.MILLISECONDS);
+        logger.info("Refresh token cached for userId={}", user.getId());
+    }
+
+    private Cookie buildRefreshCookie(String refreshToken) {
+        Cookie refreshTokenCookies = new Cookie("refreshToken", refreshToken);
+        refreshTokenCookies.setHttpOnly(true);
+        refreshTokenCookies.setSecure(true);
+        refreshTokenCookies.setPath("/");
+        refreshTokenCookies.setMaxAge((int) (refreshTokenExpiration / 1000));
+        return refreshTokenCookies;
+    }
+
+    private String extractRefreshCookie(HttpServletRequest request) {
+        if (request.getCookies() == null) return null;
+        for (Cookie c : request.getCookies()) {
+            if ("refreshToken".equals(c.getName())) {
+                return c.getValue();
+            }
+        }
+        return null;
+    }
+
+    private UserResponse toUserResponse(User user) {
+        return UserResponse.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .active(true)
+                .createdAt(user.getCreatedAt() == null ? LocalDateTime.now() : user.getCreatedAt())
+                .updatedAt(user.getUpdatedAt() == null ? LocalDateTime.now() : user.getUpdatedAt())
+                .build();
     }
 }

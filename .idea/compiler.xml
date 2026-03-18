@@ -8,6 +8,7 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="Product" />
+        <module name="product" />
         <module name="config" />
         <module name="gateway" />
         <module name="discovery" />
@@ -24,6 +25,7 @@
         <module name="Payment" />
         <module name="common" />
         <module name="auth" />
+        <module name="payment" />
         <module name="inventory" />
         <module name="cart" />
         <module name="customer" />
@@ -46,6 +48,8 @@
       <module name="inventory" options="-parameters" />
       <module name="notification" options="-parameters" />
       <module name="order" options="-parameters" />
+      <module name="payment" options="-parameters" />
+      <module name="product" options="-parameters" />
     </option>
   </component>
 </project>

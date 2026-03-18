@@ -28,6 +28,11 @@ import java.util.Map;
 @Component
 @RequiredArgsConstructor
 public class JwtAuthFilter extends OncePerRequestFilter {
+    private static final String AUTHORIZATION_HEADER = "Authorization";
+    private static final String BEARER_PREFIX = "Bearer ";
+    private static final String BLACKLIST_PREFIX = "BlackList:";
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
     private final JwtUtils jwtUtils;
     private final UserDetailsService userDetailsService;
     private final StringRedisTemplate stringRedisTemplate;
@@ -38,22 +43,21 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
-        final String authHeader = request.getHeader("Authorization");
-        final String jwt;
-        final String username;
+        final String authHeader = request.getHeader(AUTHORIZATION_HEADER);
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        jwt = authHeader.substring(7);
+        String jwt = authHeader.substring(BEARER_PREFIX.length());
 
-        if (stringRedisTemplate.hasKey("BlackList:" + jwt)) {
+        if (stringRedisTemplate.hasKey(BLACKLIST_PREFIX + jwt)) {
             sendUnauthorizedResponse(response, "Token is blacklisted");
             return;
         }
 
+        String username;
         try {
             username = jwtUtils.extractUsername(jwt);
         } catch (ExpiredJwtException e) {
@@ -65,7 +69,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
+            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
             if (jwtUtils.isTokenValid(jwt, userDetails)) {
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         userDetails,
@@ -91,7 +95,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         responseBody.put("code", "401");
         responseBody.put("message", message);
 
-        String json = new ObjectMapper().writeValueAsString(responseBody);
+        String json = OBJECT_MAPPER.writeValueAsString(responseBody);
         response.getWriter().write(json);
     }
 }

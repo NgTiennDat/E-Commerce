@@ -10,6 +10,7 @@ public enum ResponseCode {
     INTERNAL_SERVER_ERROR("ERR_500", "Internal server error", HttpStatus.INTERNAL_SERVER_ERROR),
     NO_CODE("ERR_000", "No error code specified", HttpStatus.INTERNAL_SERVER_ERROR),
     CACHE_FAILED("VAL_500", "Cache failed" , HttpStatus.INTERNAL_SERVER_ERROR),
+    INVALID_REQUEST("VAL_400", "Invalid request" , HttpStatus.BAD_REQUEST),
 
     // ======= User ========
     USERNAME_ALREADY_EXISTS("USER_409", "Username already exists" , HttpStatus.CONFLICT),
@@ -25,7 +26,7 @@ public enum ResponseCode {
     PRODUCT_QUANTITY_NOT_ENOUGH("PRD_400", "Product quantity not enough", HttpStatus.BAD_REQUEST),
 
     // ======= Category ========
-    CATEGORY_NOT_FOUND("CAT_404", "Category not found" , HttpStatus.NOT_FOUND ),;
+    CATEGORY_NOT_FOUND("CAT_404", "Category not found" , HttpStatus.NOT_FOUND );
 
 
     private final String code;

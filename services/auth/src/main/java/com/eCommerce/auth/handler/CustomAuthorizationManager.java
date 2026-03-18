@@ -1,7 +1,7 @@
 package com.eCommerce.auth.handler;
 
 import com.eCommerce.auth.model.entity.User;
-import com.eCommerce.auth.handler.impl.UserDetailsServiceImpl;
+import com.eCommerce.auth.service.PermissionService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
@@ -17,7 +17,7 @@ import java.util.function.Supplier;
 @RequiredArgsConstructor
 public class CustomAuthorizationManager implements AuthorizationManager<RequestAuthorizationContext> {
 
-    private final UserDetailsServiceImpl userDetailsService;
+    private final PermissionService permissionService;
 
     /**
      * Checks whether the current user is authorized to access a specific resource.
@@ -35,10 +35,13 @@ public class CustomAuthorizationManager implements AuthorizationManager<RequestA
         }
 
         HttpServletRequest request = requestContext.getRequest();
-        String username = ((User) auth.getPrincipal()).getUsername();
-        return userDetailsService.hasPermission(username, request.getServletPath(), request.getMethod())
-                ? new AuthorizationDecision(true)
-                : new AuthorizationDecision(false);
+        Object principal = auth.getPrincipal();
+        if (!(principal instanceof User user)) {
+            return new AuthorizationDecision(false);
+        }
+
+        boolean allowed = permissionService.hasPermission(user.getUsername(), request.getServletPath(), request.getMethod());
+        return new AuthorizationDecision(allowed);
     }
 
     /**

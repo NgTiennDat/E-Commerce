@@ -59,15 +59,20 @@ public class CustomerServiceImpl implements CustomerService {
 
     public String updateCustomer(String customerId, UpdateCustomerRequest request) {
         var customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> new RuntimeException("Customer not found with id: " + customerId));
-        var updateCustomer = customerMapper.toUpdateCustomer(request);
-        customerRepository.save(updateCustomer);
+                .orElseThrow(() -> new CustomException(ResponseCode.USER_NOT_FOUND));
+
+        customer.setFirstName(request.firstName());
+        customer.setLastName(request.lastName());
+        customer.setEmail(request.email());
+        customer.setAddress(request.address());
+
+        customerRepository.save(customer);
         return "Customer updated with id: " + customer.getId();
     }
 
     public String deleteCustomer(String customerId) {
         var customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> new RuntimeException("Customer not found with id: " + customerId));
+                .orElseThrow(() -> new CustomException(ResponseCode.USER_NOT_FOUND));
         customerRepository.delete(customer);
         return "Customer deleted with id: " + customer.getId();
     }

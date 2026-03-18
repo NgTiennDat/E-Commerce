@@ -9,6 +9,7 @@ import com.eCommerce.product.model.projection.ProductListProjection;
 import com.eCommerce.product.model.projection.RelatedProductProjection;
 import com.eCommerce.product.model.request.ProductPurchaseRequest;
 import com.eCommerce.product.model.request.ProductRequest;
+import com.eCommerce.product.model.request.ProductSearchRequest;
 import com.eCommerce.product.model.response.ProductPurchaseResponse;
 import com.eCommerce.product.model.response.ProductResponse;
 import com.eCommerce.product.repository.CategoryRepository;
@@ -23,375 +24,248 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+/**
+ * Core product orchestration.
+ * Notes for future maintainers:
+ *  - Concurrency: purchase flow is still vulnerable to oversell without DB locking/reservation.
+ *  - Auditing: manual for now; migrate to Spring Data auditing when enabled.
+ *  - Pricing: kept read-only here; calculation lives in mapper to centralize discount math.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
-/*
- * Service xử lý toàn bộ business logic liên quan đến Product:
- *  - CRUD sản phẩm
- *  - Tìm kiếm + filter + pagination
- *  - Mua hàng (purchase batch)
- *  - Lấy sản phẩm theo category
- *  - Lấy sản phẩm liên quan (related items)
- *
- * NOTE:
- *  - Tất cả exception business đều dùng CustomException để đồng bộ format trả về.
- *  - Đã sử dụng Projection + Native Query để tối ưu hiệu năng.
- *  - Các trường audit (createdBy/updatedBy) đang set SYSTEM, nhưng khi tích hợp Auth thì sẽ thay bằng username thực.
- */
 public class ProductServiceImpl implements ProductService {
+
+    private static final String SYSTEM_ACTOR = "SYSTEM";
+    private static final int DEFAULT_PAGE = 0;
+    private static final int DEFAULT_SIZE = 10;
+    private static final int MAX_RELATED_LIMIT = 20;
+    private static final int DEFAULT_RELATED_LIMIT = 10;
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final ProductMapper productMapper;
 
-    // ============================================================
-    // 1. CREATE PRODUCT (ADMIN)
-    // ============================================================
-
     /**
-     * Tạo mới một product.
-     *
-     * Flow:
-     *  1. Validate categoryId bằng CategoryRepository
-     *  2. Map ProductRequest → Product entity (mapper lo)
-     *  3. Set audit fields (createdBy, createdAt, ...)
-     *  4. Save vào DB
-     *  5. Return ID sản phẩm
-     *
-     * Business Rules:
-     *  - SKU phải unique
-     *  - Category phải tồn tại
+     * Admin creates a product.
+     * - Validates category existence and SKU uniqueness up front to fail fast.
+     * - Defaults status to ACTIVE when missing to keep reads consistent.
+     * - Sets audit fields explicitly (until JPA auditing is enabled).
      */
     @Override
     public Long addProduct(ProductRequest request) {
-        try {
-            Category category = categoryRepository.findById(request.getCategoryId())
-                    .orElseThrow(() -> new CustomException(ResponseCode.CATEGORY_NOT_FOUND));
+        Category category = getCategoryOrThrow(request.getCategoryId());
 
-            Product product = productMapper.toEntity(request, category);
-
-            product.setCreatedAt(LocalDateTime.now());
-            product.setCreatedBy("SYSTEM");
-            product.setUpdatedAt(LocalDateTime.now());
-            product.setUpdatedBy("SYSTEM");
-
-            Product saved = productRepository.save(product);
-
-            return saved.getId();
-        } catch (CustomException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("[addProduct] Error: {}", e.getMessage(), e);
-            throw new CustomException(ResponseCode.INTERNAL_SERVER_ERROR);
+        if (productRepository.existsBySkuAndIsDeletedFalse(request.getSku())) {
+            throw new CustomException(ResponseCode.INVALID_REQUEST);
         }
+
+        Product product = productMapper.toEntity(request, category);
+        if (product.getStatus() == null) {
+            product.setStatus(ProductStatus.ACTIVE);
+        }
+
+        stampAuditOnCreate(product);
+
+        Long id = productRepository.save(product).getId();
+        log.info("Product created sku={}, id={}", product.getSku(), id);
+        return id;
     }
 
-    // ============================================================
-    // 2. PURCHASE MULTIPLE PRODUCTS IN ONE REQUEST
-    // ============================================================
-
     /**
-     * Purchase sản phẩm hàng loạt.
-     *
-     * Flow:
-     *  1. Validate list request != empty
-     *  2. Extract list productId
-     *  3. Query DB bằng findAllByIdInOrderById() (đã sorted để map 1-1)
-     *  4. Validate số lượng record trả về phải == số lượng request
-     *  5. Sort lại request theo productId để đảm bảo index mapping
-     *  6. Với từng product:
-     *        - Check tồn kho
-     *        - Trừ tồn kho
-     *        - Save lại vào DB
-     *        - Build ProductPurchaseResponse (giá gốc, giá sau giảm, total price,…)
-     *
-     * Lợi ích:
-     *  - Tránh gọi DB nhiều lần (1 query load tất cả)
-     *  - Giảm race condition khi mua batch
-     *  - Tối ưu performance
+     * Bulk purchase flow (cart checkout).
+     * Transactional to keep stock deductions atomic within the service boundary.
+     * Concurrency caveat: still susceptible to oversell during flash sales.
+     * Replace with optimistic/pessimistic lock or a reservation service for high contention.
      */
     @Override
     @Transactional(rollbackFor = CustomException.class)
-    public List<ProductPurchaseResponse> purchaseProduct(List<ProductPurchaseRequest> request) {
-        try {
-            if (request == null || request.isEmpty()) return List.of();
-
-            List<Long> productIds = request.stream()
-                    .map(ProductPurchaseRequest::getProductId)
-                    .toList();
-
-            List<Product> storedProducts = productRepository.findAllByIdInOrderById(productIds);
-
-            if (storedProducts.size() != productIds.size()) {
-                throw new CustomException(ResponseCode.PRODUCT_NOT_FOUND);
-            }
-
-            List<ProductPurchaseRequest> sortedRequest = request.stream()
-                    .sorted(Comparator.comparing(ProductPurchaseRequest::getProductId))
-                    .toList();
-
-            List<ProductPurchaseResponse> purchasedProducts = new ArrayList<>();
-
-            for (int i = 0; i < storedProducts.size(); i++) {
-                Product product = storedProducts.get(i);
-                ProductPurchaseRequest req = sortedRequest.get(i);
-
-                if (product.getAvailableQuantity() < req.getQuantity()) {
-                    throw new CustomException(ResponseCode.PRODUCT_QUANTITY_NOT_ENOUGH);
-                }
-
-                product.setAvailableQuantity(product.getAvailableQuantity() - req.getQuantity());
-                productRepository.save(product);
-
-                purchasedProducts.add(productMapper.toPurchaseResponse(product, req.getQuantity()));
-            }
-
-            return purchasedProducts;
-
-        } catch (CustomException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("[purchaseProduct] Error: {}", e.getMessage(), e);
-            throw new CustomException(ResponseCode.INTERNAL_SERVER_ERROR);
+    public List<ProductPurchaseResponse> purchaseProduct(List<ProductPurchaseRequest> requests) {
+        if (requests == null || requests.isEmpty()) {
+            return List.of();
         }
+
+        List<ProductPurchaseRequest> sorted = requests.stream()
+                .sorted(Comparator.comparing(ProductPurchaseRequest::getProductId))
+                .toList();
+
+        List<Long> ids = sorted.stream().map(ProductPurchaseRequest::getProductId).toList();
+
+        // Single fetch to reduce DB round trips; order-by-id to align with sorted list.
+        List<Product> products = productRepository.findAllByIdInAndIsDeletedFalseOrderById(ids);
+        if (products.size() != ids.size()) {
+            throw new CustomException(ResponseCode.PRODUCT_NOT_FOUND);
+        }
+
+        List<ProductPurchaseResponse> responses = new ArrayList<>(products.size());
+
+        for (int i = 0; i < products.size(); i++) {
+            Product product = products.get(i);
+            int quantityRequested = sorted.get(i).getQuantity();
+
+            assertPositiveQuantity(quantityRequested);
+            assertStockSufficient(product, quantityRequested);
+
+            product.setAvailableQuantity(product.getAvailableQuantity() - quantityRequested);
+            responses.add(productMapper.toPurchaseResponse(product, quantityRequested));
+        }
+
+        productRepository.saveAll(products);
+        log.info("Completed purchase for {} items", products.size());
+        return responses;
     }
 
-    // ============================================================
-    // 3. PRODUCT DETAIL BY ID
-    // ============================================================
-
-    /**
-     * Lấy chi tiết product theo ID.
-     *
-     * Bao gồm:
-     *  - Category info
-     *  - Final price (giá sau giảm)
-     *  - inStock flag
-     */
     @Override
     public ProductResponse getProductDetail(Long productId) {
-        try {
-            Product product = productRepository.findById(productId)
-                    .orElseThrow(() -> new CustomException(ResponseCode.PRODUCT_NOT_FOUND));
-
-            return productMapper.toResponse(product);
-
-        } catch (CustomException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("[getProductDetail] Error: {}", e.getMessage(), e);
-            throw new CustomException(ResponseCode.INTERNAL_SERVER_ERROR);
-        }
+        Product product = getProductOrThrow(productId);
+        return productMapper.toResponse(product);
     }
 
-    // ============================================================
-    // 4. GET PRODUCTS BY CATEGORY WITH PAGINATION
-    // ============================================================
-
-    /**
-     * Lấy danh sách sản phẩm theo category kèm pagination.
-     *
-     * Use case:
-     *  - FE click category sẽ vào đây
-     *  - category listing pages
-     */
     @Override
     public Page<ProductResponse> getAllProductInCategory(Long categoryId, int page, int size) {
-        try {
-            Pageable pageable = PageRequest.of(Math.max(page, 0), size);
+        Pageable pageable = buildPageable(page, size);
+        Page<Product> products = productRepository.findAllByCategoryIdAndIsDeletedFalse(categoryId, pageable);
 
-            Page<Product> products = productRepository.findAllByCategoryId(categoryId, pageable);
-
-            log.info("Category {} contains {} products", categoryId, products.getTotalElements());
-
-            return products.map(productMapper::toResponse);
-
-        } catch (Exception e) {
-            log.error("[getAllProductInCategory] Error: {}", e.getMessage(), e);
-            throw new CustomException(ResponseCode.INTERNAL_SERVER_ERROR);
-        }
+        log.debug("Category {} contains {} products", categoryId, products.getTotalElements());
+        return products.map(productMapper::toResponse);
     }
 
-    // ============================================================
-    // 5. ADVANCED SEARCH + FILTER + PAGINATION WITH NATIVE QUERY
-    // ============================================================
-
-    /**
-     * API tìm kiếm nâng cao (search + filter + sort).
-     *
-     * Parameters:
-     *  - keyword (name, brand, description)
-     *  - categoryName
-     *  - status
-     *  - minPrice & maxPrice
-     *  - brand
-     *  - isFeatured / isNew
-     *
-     * Notes:
-     *  - Query sử dụng Projection + Native SQL => hiệu năng rất cao
-     *  - Chỉ select 12 cột thay vì toàn bộ entity → nhẹ & nhanh
-     */
     @Override
-    public Page<ProductResponse> getProducts(
-            int page,
-            int size,
-            String keyword,
-            String categoryName,
-            ProductStatus status,
-            BigDecimal minPrice,
-            BigDecimal maxPrice,
-            String brand,
-            Boolean isFeatured,
-            Boolean isNew
-    ) {
-        try {
-            Pageable pageable = PageRequest.of(Math.max(page, 0), size);
+    public Page<ProductResponse> getProducts(ProductSearchRequest request) {
+        Pageable pageable = buildPageable(request.getPage(), request.getSize());
 
-            Page<ProductListProjection> projectionPage = productRepository.searchProducts(
-                    keyword,
-                    categoryName,
-                    status != null ? status.name() : null,
-                    minPrice,
-                    maxPrice,
-                    brand,
-                    isFeatured,
-                    isNew,
-                    pageable
-            );
+        Page<ProductListProjection> projectionPage = productRepository.searchProducts(
+                request.getKeyword(),
+                request.getCategoryName(),
+                request.getStatus() != null ? request.getStatus().name() : null,
+                request.getMinPrice(),
+                request.getMaxPrice(),
+                request.getBrand(),
+                request.getIsFeatured(),
+                request.getIsNew(),
+                pageable
+        );
 
-            return projectionPage.map(productMapper::mapToProductResponse);
-
-        } catch (Exception e) {
-            log.error("[getProducts] Error: {}", e.getMessage(), e);
-            throw new CustomException(ResponseCode.INTERNAL_SERVER_ERROR);
-        }
+        return projectionPage.map(productMapper::mapToProductResponse);
     }
 
-    // ============================================================
-    // 6. UPDATE PRODUCT
-    // ============================================================
-
     /**
-     * Update thông tin product.
-     *
-     * NOTE:
-     *  - Chỉ update các trường được phép edit (không update category ở đây)
-     *  - Audit updatedAt/updatedBy
+     * Admin updates product attributes (no price rules enforced here).
+     * Note: consider moving price-change policies and audit logging to a dedicated domain service.
      */
     @Override
     public void updateProduct(Long productId, ProductRequest request) {
-        try {
-            Product product = productRepository.findById(productId)
-                    .orElseThrow(() -> new CustomException(ResponseCode.PRODUCT_NOT_FOUND));
+        Product product = getProductOrThrow(productId);
 
-            product.setSku(request.getSku());
-            product.setName(request.getName());
-            product.setShortDescription(request.getShortDescription());
-            product.setDescription(request.getDescription());
-            product.setPrice(request.getPrice());
-            product.setDiscountPercent(request.getDiscountPercent());
-            product.setAvailableQuantity(request.getAvailableQuantity());
-            product.setImageUrl(request.getImageUrl());
-            product.setBrand(request.getBrand());
-            product.setIsFeatured(request.getIsFeatured());
-            product.setIsNew(request.getIsNew());
-
-            product.setUpdatedAt(LocalDateTime.now());
-            product.setUpdatedBy("SYSTEM");
-
-            productRepository.save(product);
-
-        } catch (Exception e) {
-            log.error("[updateProduct] Error: {}", e.getMessage(), e);
-            throw new CustomException(ResponseCode.INTERNAL_SERVER_ERROR);
+        if (!product.getSku().equals(request.getSku()) &&
+                productRepository.existsBySkuAndIsDeletedFalse(request.getSku())) {
+            throw new CustomException(ResponseCode.INVALID_REQUEST);
         }
+
+        product.setSku(request.getSku());
+        product.setName(request.getName());
+        product.setShortDescription(request.getShortDescription());
+        product.setDescription(request.getDescription());
+        product.setPrice(request.getPrice());
+        product.setDiscountPercent(request.getDiscountPercent());
+        product.setAvailableQuantity(request.getAvailableQuantity());
+        product.setImageUrl(request.getImageUrl());
+        product.setBrand(request.getBrand());
+        product.setIsFeatured(request.getIsFeatured());
+        product.setIsNew(request.getIsNew());
+
+        stampAuditOnUpdate(product);
+        productRepository.save(product);
+        log.info("Product updated id={}", productId);
     }
 
-    // ============================================================
-    // 7. SOFT DELETE PRODUCT
-    // ============================================================
-
-    /**
-     * Delete (soft delete) product.
-     */
     @Override
     public void deleteProduct(Long productId) {
-        try {
-            Product product = productRepository.findById(productId)
-                    .orElseThrow(() -> new CustomException(ResponseCode.PRODUCT_NOT_FOUND));
+        Product product = getProductOrThrow(productId);
+        product.setIsDeleted(true);
 
-            product.setIsDeleted(true);
-            productRepository.save(product);
-
-        } catch (Exception e) {
-            log.error("[deleteProduct] Error: {}", e.getMessage(), e);
-            throw new CustomException(ResponseCode.INTERNAL_SERVER_ERROR);
-        }
+        stampAuditOnUpdate(product);
+        productRepository.save(product);
+        log.info("Product soft-deleted id={}", productId);
     }
 
-    // ============================================================
-    // 8. RELATED PRODUCTS (NATIVE QUERY)
-    // ============================================================
-
-    /**
-     * Lấy danh sách sản phẩm liên quan:
-     *  - Cùng category
-     *  - Có thể cùng brand (ưu tiên xếp hạng)
-     *  - Không include chính product đang xem
-     *
-     * LIMIT:
-     *  - FE truyền vào hoặc default = 10
-     *
-     * Query:
-     *  - Native SQL trong ProductRepository
-     *  - Select nhẹ bằng projection → siêu nhanh
-     */
     @Override
     public List<ProductResponse> getRelatedProducts(Long productId, int limit) {
-        try {
-            Product product = productRepository.findById(productId)
-                    .orElseThrow(() -> new CustomException(ResponseCode.PRODUCT_NOT_FOUND));
+        Product product = getProductOrThrow(productId);
 
-            Long categoryId = product.getCategory().getId();
+        Long categoryId = product.getCategory().getId();
+        int size = normalizeLimit(limit);
 
-            int size = (limit <= 0) ? 10 : Math.min(limit, 20);
+        List<RelatedProductProjection> projections =
+                productRepository.findRelatedProductsNative(categoryId, productId, size);
 
-            List<RelatedProductProjection> projections =
-                    productRepository.findRelatedProductsNative(categoryId, productId, size);
-
-            return projections.stream()
-                    .map(productMapper::fromRelatedProjection)
-                    .toList();
-
-        } catch (Exception e) {
-            log.error("[getRelatedProducts] Error: {}", e.getMessage(), e);
-            throw new CustomException(ResponseCode.INTERNAL_SERVER_ERROR);
-        }
+        return projections.stream()
+                .map(productMapper::fromRelatedProjection)
+                .toList();
     }
 
     @Override
     public void updateProductStatus(Long productId, ProductStatus status) {
-        try {
-            Product product = productRepository.findById(productId)
-                    .orElseThrow(() -> new CustomException(ResponseCode.PRODUCT_NOT_FOUND));
+        Product product = getProductOrThrow(productId);
+        product.setStatus(status);
 
-            product.setStatus(status);
-            product.setUpdatedAt(LocalDateTime.now());
-            product.setUpdatedBy("SYSTEM");
+        stampAuditOnUpdate(product);
+        productRepository.save(product);
+        log.info("Product status updated id={} status={}", productId, status);
+    }
 
-            productRepository.save(product);
+    // -----------------------------------------------------------------------
+    // Helpers
+    // -----------------------------------------------------------------------
 
-        } catch (Exception e) {
-            log.error("[updateProductStatus] Error: {}", e.getMessage(), e);
-            throw new CustomException(ResponseCode.INTERNAL_SERVER_ERROR);
+    private Product getProductOrThrow(Long id) {
+        return productRepository.findByIdAndIsDeletedFalse(id)
+                .orElseThrow(() -> new CustomException(ResponseCode.PRODUCT_NOT_FOUND));
+    }
+
+    private Category getCategoryOrThrow(Long id) {
+        return categoryRepository.findByIdAndIsDeletedFalse(id)
+                .orElseThrow(() -> new CustomException(ResponseCode.CATEGORY_NOT_FOUND));
+    }
+
+    private Pageable buildPageable(int page, int size) {
+        int safePage = Math.max(page, DEFAULT_PAGE);
+        int safeSize = (size <= 0) ? DEFAULT_SIZE : size;
+        return PageRequest.of(safePage, safeSize);
+    }
+
+    private int normalizeLimit(int limit) {
+        if (limit <= 0) {
+            return DEFAULT_RELATED_LIMIT;
+        }
+        return Math.min(limit, MAX_RELATED_LIMIT);
+    }
+
+    private void assertPositiveQuantity(int quantity) {
+        if (quantity <= 0) {
+            throw new CustomException(ResponseCode.INVALID_REQUEST);
         }
     }
-}
 
+    private void assertStockSufficient(Product product, int quantityRequested) {
+        if (product.getAvailableQuantity() < quantityRequested) {
+            throw new CustomException(ResponseCode.PRODUCT_QUANTITY_NOT_ENOUGH);
+        }
+    }
+
+    private void stampAuditOnCreate(Product product) {
+        product.setCreatedAt(LocalDateTime.now());
+        product.setCreatedBy(SYSTEM_ACTOR);
+        stampAuditOnUpdate(product);
+    }
+
+    private void stampAuditOnUpdate(Product product) {
+        product.setUpdatedAt(LocalDateTime.now());
+        product.setUpdatedBy(SYSTEM_ACTOR);
+    }
+}
