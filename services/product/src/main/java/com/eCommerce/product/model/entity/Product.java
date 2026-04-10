@@ -11,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -48,6 +49,7 @@ public class Product extends Audit {
     @Column(name = "available_quantity")
     private Integer availableQuantity;
 
+
     @Column(name = "price")
     private BigDecimal price;
 
@@ -82,6 +84,9 @@ public class Product extends Audit {
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
     private ProductStatus status;
+
+    @Version
+    private Long version;
 
     @ManyToOne
     @JoinColumn(name = "category_id")

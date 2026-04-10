@@ -3,6 +3,7 @@ package com.eCommerce.auth.service.impl;
 import com.eCommerce.auth.model.entity.Role;
 import com.eCommerce.auth.model.entity.User;
 import com.eCommerce.auth.model.entity.UserInfo;
+import com.eCommerce.auth.model.request.AdminCreateUserRequest;
 import com.eCommerce.auth.model.request.RegistrationRequest;
 import com.eCommerce.auth.model.response.ProfileResponse;
 import com.eCommerce.auth.model.response.RegistrationResponse;
@@ -30,90 +31,75 @@ import java.util.Set;
 public class UserServiceImpl implements UserService {
 
     private static final Logger logger = LogManager.getLogger(UserServiceImpl.class);
-    private static final String SYSTEM = "SYSTEM";
+    private static final String DEFAULT_ROLE_CODE = "CUSTOMER";
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
-
-    private static final String DEFAULT_ROLE_CODE = "CUSTOMER";
     private final UserInfoRepository userInfoRepository;
 
     /**
-     * Register a new user.
-     * @param request the registration request containing user details
-     * @return the registration response with user info and access token
-     * @throws CustomException if validation fails or an error occurs
+     * Public self-registration.
+     * Role luôn là CUSTOMER — server quyết định, không phải client.
      */
     @Transactional
     @Override
     public RegistrationResponse register(RegistrationRequest request) {
         try {
+            validateUsernameAndEmail(request.getUsername(), request.getEmail());
 
-            // ========== 1. Validate ==========
-            if (userRepository.existsUserByUsername(request.getUsername())) {
-                throw new CustomException(ResponseCode.USERNAME_ALREADY_EXISTS);
-            }
-
-            if (userRepository.existsUserByEmail(request.getEmail())) {
-                throw new CustomException(ResponseCode.EMAIL_ALREADY_EXISTS);
-            }
-
-            // ========== 2. Resolve Role ==========
-            String roleCode = (request.getRoleCode() == null || request.getRoleCode().isBlank())
-                    ? DEFAULT_ROLE_CODE
-                    : request.getRoleCode();
-
-            Role role = roleRepository.findByCode(roleCode)
+            Role role = roleRepository.findByCode(DEFAULT_ROLE_CODE)
                     .orElseThrow(() -> new CustomException(ResponseCode.ROLE_NOT_FOUND));
 
-            // ========== 3. Create User ==========
-            User user = new User();
-            user.setUsername(request.getUsername());
-            user.setEmail(request.getEmail());
-            user.setPassword(passwordEncoder.encode(request.getPassword()));
-            user.setIsAccountNonExpired(true);
-            user.setIsAccountNonLocked(true);
-            user.setIsEnabled(true); // allow login
-            user.setRoles(Set.of(role));
-
-            // Save user first
-            User savedUser = userRepository.save(user);
-
-            // ========== 4. Create UserInfo ==========
-            UserInfo userInfo = new UserInfo();
-            userInfo.setUser(savedUser);
-            userInfo.setFirstName(request.getFirstName());
-            userInfo.setLastName(request.getLastName());
-            userInfo.setPhoneNumber(request.getPhoneNumber());
-            userInfo.setAddress(request.getAddress());
-            userInfo.setAvatarUrl(request.getAvatarUrl());
-
-            userInfoRepository.save(userInfo);
-
-            // ========== 5. Generate JWT ==========
-            String accessToken = jwtUtils.generateToken(savedUser);
-
-            List<String> roles = savedUser.getRoles()
-                    .stream()
-                    .map(Role::getCode)
-                    .toList();
-
-            // ========== 6. Build Response ==========
-            return RegistrationResponse.builder()
-                    .userId(savedUser.getId())
-                    .username(savedUser.getUsername())
-                    .email(savedUser.getEmail())
-                    .roles(roles)
-                    .accessToken(accessToken)
-                    .build();
-
+            return buildAndSaveUser(
+                    request.getUsername(),
+                    request.getEmail(),
+                    request.getPassword(),
+                    request.getFirstName(),
+                    request.getLastName(),
+                    request.getPhoneNumber(),
+                    request.getAddress(),
+                    request.getAvatarUrl(),
+                    role
+            );
         } catch (CustomException e) {
             throw e;
-
         } catch (Exception e) {
             logger.error("Error while registering user: {}", e.getMessage(), e);
+            throw new CustomException(ResponseCode.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Admin tạo user với role tùy chọn.
+     * Chỉ được gọi từ AdminUserController — endpoint đó được bảo vệ bằng RBAC.
+     */
+    @Transactional
+    @Override
+    public RegistrationResponse createUser(AdminCreateUserRequest request) {
+        try {
+            validateUsernameAndEmail(request.getUsername(), request.getEmail());
+
+            // Admin chỉ định role — server vẫn validate role tồn tại
+            Role role = roleRepository.findByCode(request.getRoleCode())
+                    .orElseThrow(() -> new CustomException(ResponseCode.ROLE_NOT_FOUND));
+
+            return buildAndSaveUser(
+                    request.getUsername(),
+                    request.getEmail(),
+                    request.getPassword(),
+                    request.getFirstName(),
+                    request.getLastName(),
+                    request.getPhoneNumber(),
+                    request.getAddress(),
+                    request.getAvatarUrl(),
+                    role
+            );
+        } catch (CustomException e) {
+            throw e;
+        } catch (Exception e) {
+            logger.error("Error while creating user (admin): {}", e.getMessage(), e);
             throw new CustomException(ResponseCode.INTERNAL_SERVER_ERROR);
         }
     }
@@ -121,27 +107,86 @@ public class UserServiceImpl implements UserService {
     @Override
     public ProfileResponse getProfile(Authentication authentication) {
         try {
-            var principal = authentication.getPrincipal();
+            User userDetails = (User) authentication.getPrincipal();
 
-            // Ép kiểu về UserDetailsImpl hoặc User entity (tuỳ bạn)
-            User userDetails = (User) principal;
-
-            // Lấy User
             User user = userRepository.findByUsername(userDetails.getUsername())
                     .orElseThrow(() -> new CustomException(ResponseCode.USER_NOT_FOUND));
 
-            // Lấy UserInfo
             UserInfo userInfo = userInfoRepository.findByUser(user)
                     .orElseThrow(() -> new CustomException(ResponseCode.USER_NOT_FOUND));
 
-            // Map sang response DTO
             return ProfileMapper.toProfileResponse(user, userInfo);
         } catch (CustomException e) {
             throw e;
         } catch (Exception e) {
-            logger.error("Error while registering user: {}", e.getMessage(), e);
+            logger.error("Error while fetching profile: {}", e.getMessage(), e);
             throw new CustomException(ResponseCode.INTERNAL_SERVER_ERROR);
         }
     }
 
+    // -----------------------------------------------------------------------
+    // Private helpers
+    // -----------------------------------------------------------------------
+
+    /**
+     * Validate username và email chưa tồn tại.
+     * Tách ra để cả register() và createUser() dùng chung — tránh duplicate logic.
+     */
+    private void validateUsernameAndEmail(String username, String email) {
+        if (userRepository.existsUserByUsername(username)) {
+            throw new CustomException(ResponseCode.USERNAME_ALREADY_EXISTS);
+        }
+        if (userRepository.existsUserByEmail(email)) {
+            throw new CustomException(ResponseCode.EMAIL_ALREADY_EXISTS);
+        }
+    }
+
+    /**
+     * Tạo User + UserInfo + generate access token, trả về RegistrationResponse.
+     *
+     * Tại sao extract ra private method?
+     * register() và createUser() có cùng flow sau khi resolve role:
+     * tạo entity → save → generate token → build response.
+     * Nếu để riêng trong từng method → duplicate ~30 dòng code.
+     * Extract ra đây → 1 chỗ duy nhất để sửa khi cần thay đổi.
+     */
+    private RegistrationResponse buildAndSaveUser(
+            String username, String email, String password,
+            String firstName, String lastName,
+            String phoneNumber, String address, String avatarUrl,
+            Role role
+    ) {
+        User user = new User();
+        user.setUsername(username);
+        user.setEmail(email);
+        user.setPassword(passwordEncoder.encode(password));
+        user.setIsAccountNonExpired(true);
+        user.setIsAccountNonLocked(true);
+        user.setIsEnabled(true);
+        user.setRoles(Set.of(role));
+        User savedUser = userRepository.save(user);
+
+        UserInfo userInfo = new UserInfo();
+        userInfo.setUser(savedUser);
+        userInfo.setFirstName(firstName);
+        userInfo.setLastName(lastName);
+        userInfo.setPhoneNumber(phoneNumber);
+        userInfo.setAddress(address);
+        userInfo.setAvatarUrl(avatarUrl);
+        userInfoRepository.save(userInfo);
+
+        String accessToken = jwtUtils.generateAccessToken(savedUser);
+
+        List<String> roles = savedUser.getRoles().stream()
+                .map(Role::getCode)
+                .toList();
+
+        return RegistrationResponse.builder()
+                .userId(savedUser.getId())
+                .username(savedUser.getUsername())
+                .email(savedUser.getEmail())
+                .roles(roles)
+                .accessToken(accessToken)
+                .build();
+    }
 }

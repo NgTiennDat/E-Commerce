@@ -43,7 +43,7 @@ public class RegistrationRequest {
 
     @Size(max = 255)
     private String address;
-
-    @NotBlank
-    private String roleCode;
+    // roleCode đã bị xóa khỏi public registration.
+    // Public endpoint luôn tạo CUSTOMER — server quyết định, không phải client.
+    // Admin muốn tạo user với role khác → dùng POST /api/v1/admin/users.
 }

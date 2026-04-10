@@ -3,6 +3,7 @@ package com.eCommerce.product.service;
 import com.eCommerce.product.model.enumn.ProductStatus;
 import com.eCommerce.product.model.request.ProductPurchaseRequest;
 import com.eCommerce.product.model.request.ProductRequest;
+import com.eCommerce.product.model.request.ProductSearchRequest;
 import com.eCommerce.product.model.response.ProductPurchaseResponse;
 import com.eCommerce.product.model.response.ProductResponse;
 import org.springframework.data.domain.Page;
@@ -20,18 +21,7 @@ public interface ProductService {
 
     Page<ProductResponse> getAllProductInCategory(Long categoryId, int page, int size);
 
-    Page<ProductResponse> getProducts(
-            int page,
-            int size,
-            String keyword,
-            String categoryName,
-            ProductStatus status,
-            BigDecimal minPrice,
-            BigDecimal maxPrice,
-            String brand,
-            Boolean isFeatured,
-            Boolean isNew
-    );
+    Page<ProductResponse> getProducts(ProductSearchRequest request);
 
     void updateProduct(Long productId, ProductRequest request);
 

@@ -31,8 +31,18 @@ import java.util.stream.Collectors;
 )
 public class JwtUtils {
 
+    // Claim key dùng để phân biệt loại token
+    // Tại sao cần? Để ngăn access token bị dùng như refresh token và ngược lại.
+    public static final String CLAIM_TOKEN_TYPE  = "type";
+    public static final String TOKEN_TYPE_ACCESS  = "access";
+    public static final String TOKEN_TYPE_REFRESH = "refresh";
+
     @Value("${application.security.jwt.expiration}")
-    private long expirationMillis;
+    private long accessExpirationMillis;
+
+    // Đọc refresh expiry riêng — trước đây field này không tồn tại trong JwtUtils
+    @Value("${application.security.jwt.refresh-token.expiration}")
+    private long refreshExpirationMillis;
 
     @Value("${application.security.jwt.secret-key}")
     private String secret;
@@ -62,28 +72,53 @@ public class JwtUtils {
     // =================== GENERATE TOKEN ====================
 
     /**
-     * CÁCH CŨ: sinh token từ UserDetails
+     * Tạo ACCESS token.
+     * - Short-lived (accessExpirationMillis, mặc định 15 phút)
+     * - Chứa roles để downstream services authorize mà không cần gọi DB
+     * - Embed claim type=access để server phân biệt với refresh token
      */
-    public String generateToken(UserDetails userDetails) {
-        Map<String, Object> extraClaims = new HashMap<>();
-        // Lấy roles từ authorities đưa vào claim "roles"
+    public String generateAccessToken(UserDetails userDetails) {
+        Map<String, Object> claims = new HashMap<>();
         List<String> roles = userDetails.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .toList();
-        extraClaims.put("roles", roles);
-
-        // Nếu trước đây anh có thêm claim userId, email... thì add tiếp vào extraClaims ở đây
-
-        return buildToken(extraClaims, userDetails.getUsername(), expirationMillis);
+        claims.put("roles", roles);
+        claims.put(CLAIM_TOKEN_TYPE, TOKEN_TYPE_ACCESS);
+        return buildToken(claims, userDetails.getUsername(), accessExpirationMillis);
     }
 
     /**
-     * CÁCH MỚI (cho service khác / trường hợp không có UserDetails)
+     * Tạo REFRESH token.
+     * - Long-lived (refreshExpirationMillis, mặc định 7 ngày)
+     * - Chỉ chứa subject (username) và type=refresh, KHÔNG chứa roles
+     *   Lý do: refresh token không dùng để authorize request, chỉ dùng để lấy access token mới.
+     *   Giữ payload nhỏ và tách biệt mục đích.
+     * - Embed claim type=refresh để ngăn dùng nhầm như access token
      */
+    public String generateRefreshToken(UserDetails userDetails) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put(CLAIM_TOKEN_TYPE, TOKEN_TYPE_REFRESH);
+        return buildToken(claims, userDetails.getUsername(), refreshExpirationMillis);
+    }
+
+    /**
+     * Giữ lại để không break các caller cũ trong lúc migration.
+     * @deprecated Dùng generateAccessToken() hoặc generateRefreshToken() thay thế.
+     */
+    @Deprecated(forRemoval = true)
+    public String generateToken(UserDetails userDetails) {
+        return generateAccessToken(userDetails);
+    }
+
+    /**
+     * @deprecated Dùng generateAccessToken() thay thế.
+     */
+    @Deprecated(forRemoval = true)
     public String generateToken(String username, List<String> roles) {
-        Map<String, Object> extraClaims = new HashMap<>();
-        extraClaims.put("roles", roles);
-        return buildToken(extraClaims, username, expirationMillis);
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("roles", roles);
+        claims.put(CLAIM_TOKEN_TYPE, TOKEN_TYPE_ACCESS);
+        return buildToken(claims, username, accessExpirationMillis);
     }
 
     private String buildToken(Map<String, Object> extraClaims, String subject, long expirationMillis) {
@@ -102,30 +137,59 @@ public class JwtUtils {
     // ======================= VALIDATE ======================
 
     /**
-     * Logic validate kiểu cũ trong auth-filter:
-     *  - đúng username + chưa hết hạn
+     * Validate access token trong auth-filter:
+     * - Đúng username
+     * - Chưa hết hạn
+     * - Đúng type=access (ngăn refresh token bị dùng để authenticate request)
      */
     public boolean isTokenValid(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
-        return username.equals(userDetails.getUsername()) && isTokenExpired(token);
+        return username.equals(userDetails.getUsername())
+                && isNotExpired(token)
+                && isAccessToken(token);
     }
 
     /**
-     * Dùng cho gateway / chỗ không có UserDetails
+     * Validate token không cần UserDetails — dùng cho Gateway.
+     * Chỉ check signature + expiry, không check type.
+     * Gateway không cần biết type, chỉ cần biết token hợp lệ.
      */
     public boolean isTokenValid(String token) {
         try {
-            extractAllClaims(token); // parse được là OK, nếu hết hạn sẽ ném exception
-            return isTokenExpired(token);
+            extractAllClaims(token);
+            return isNotExpired(token);
         } catch (JwtException | IllegalArgumentException e) {
             log.warn("Invalid JWT token: {}", e.getMessage());
             return false;
         }
     }
 
+    /**
+     * Kiểm tra token có phải access token không.
+     * Dùng tại /auth/refresh để từ chối nếu client gửi nhầm access token.
+     */
+    public boolean isAccessToken(String token) {
+        String type = extractClaim(token, claims -> claims.get(CLAIM_TOKEN_TYPE, String.class));
+        return TOKEN_TYPE_ACCESS.equals(type);
+    }
+
+    /**
+     * Kiểm tra token có phải refresh token không.
+     * Dùng tại /auth/refresh để đảm bảo đúng loại token được gửi lên.
+     */
+    public boolean isRefreshToken(String token) {
+        String type = extractClaim(token, claims -> claims.get(CLAIM_TOKEN_TYPE, String.class));
+        return TOKEN_TYPE_REFRESH.equals(type);
+    }
+
     // ==================== INTERNAL =========================
 
-    private boolean isTokenExpired(String token) {
+    /**
+     * Trả về true nếu token CHƯA hết hạn.
+     * Tên cũ isTokenExpired() gây nhầm lẫn vì trả về true khi còn hạn.
+     * Đổi tên thành isNotExpired() để rõ nghĩa hơn.
+     */
+    private boolean isNotExpired(String token) {
         Date expiration = extractClaim(token, Claims::getExpiration);
         return !expiration.before(new Date());
     }

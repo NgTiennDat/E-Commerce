@@ -3,6 +3,8 @@ spring:
     import: optional:configserver:http://localhost:8888
   application:
     name: gateway-service
+  main:
+    allow-bean-definition-overriding: true
 application:
   security:
     jwt:
@@ -13,6 +15,15 @@ application:
 app:
   jwt:
     enabled: true
+
+auth-service:
+  base-url: http://AUTH-SERVICE
+
 redis:
   host: 127.0.0.1
   port: 6379
+
+# Phải khớp với giá trị internal.secret bên auth-service.
+# Trong production: đặt qua environment variable, KHÔNG commit giá trị thật lên git.
+internal:
+  secret: ${INTERNAL_SECRET:dev-internal-secret-change-in-prod}

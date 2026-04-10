@@ -21,12 +21,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final AuthenticationProvider authProvider;
-    private final JwtAuthFilter jwtAuthFilter;
-    private final CustomOAuth2UserService customOAuth2UserService;
-    private final OAuth2SuccessHandler oAuth2SuccessHandler;
-
-    String[] permitAllEndpoints = {
+    // Endpoints hoàn toàn public — không cần bất kỳ credential nào
+    private static final String[] PUBLIC_ENDPOINTS = {
             "/api/v1/auth/**",
             "/api/v1/user/register",
             "/v3/api-docs/**",
@@ -40,8 +36,20 @@ public class SecurityConfig {
             "/swagger-ui/**",
             "/webjars/**",
             "/websocket/**",
-            "/topic/**",
+            "/topic/**"
     };
+
+    // Endpoints nội bộ — không dùng user JWT, tự bảo vệ bằng X-Internal-Secret header.
+    // Được permit ở tầng Spring Security để request đi qua được,
+    // nhưng controller tự validate secret trước khi xử lý.
+    private static final String[] INTERNAL_ENDPOINTS = {
+            "/internal/**"
+    };
+
+    private final AuthenticationProvider authProvider;
+    private final JwtAuthFilter jwtAuthFilter;
+    private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2SuccessHandler oAuth2SuccessHandler;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -49,13 +57,10 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(permitAllEndpoints)
-                        .permitAll()
-                        .anyRequest()
-                        .authenticated()
+                        .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+                        .requestMatchers(INTERNAL_ENDPOINTS).permitAll()
+                        .anyRequest().authenticated()
                 )
-
-                // 🔑 Khi không có JWT thì trả về 401 thay vì redirect
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((request, response, authException) -> {
                             response.setContentType("application/json");

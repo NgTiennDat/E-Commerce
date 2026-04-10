@@ -1,7 +1,6 @@
 package com.eCommerce.product.repository;
 
 import com.eCommerce.product.model.entity.Product;
-import com.eCommerce.product.model.enumn.ProductStatus;
 import com.eCommerce.product.model.projection.ProductListProjection;
 import com.eCommerce.product.model.projection.RelatedProductProjection;
 import org.springframework.data.domain.Page;
@@ -12,12 +11,22 @@ import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
-    List<Product> findAllByIdInOrderById(List<Long> Ids);
 
-    Page<Product> findAllByCategoryId(Long categoryId, Pageable pageable);
+    Page<Product> findAllByCategoryIdAndIsDeletedFalse(Long categoryId, Pageable pageable);
 
+    Optional<Product> findByIdAndIsDeletedFalse(Long id);
+
+    boolean existsBySkuAndIsDeletedFalse(String sku);
+
+    List<Product> findAllByIdInAndIsDeletedFalseOrderById(List<Long> ids);
+
+    /**
+     * Search products using projection to keep result light.
+     * NOTE: consider moving to a dedicated read model / search service if filters grow.
+     */
     @Query(
             value = """
             SELECT
@@ -37,9 +46,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                 p.is_new                   AS isNew,
                 c.id                       AS categoryId,
                 c.name                     AS categoryName,
-                c.slug                     AS categorySlug,
-                c.id                       AS categoryId,
-                c.name                     AS categoryName,
                 c.description              AS categoryDescription,
                 c.slug                     AS categorySlug,
                 c.image_url                AS categoryImageUrl,
@@ -48,7 +54,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             FROM products p
             LEFT JOIN category c ON p.category_id = c.id
             WHERE
-                p.is_deleted = FALSE
+                p.is_deleted = b'0'
                 AND (:keyword IS NULL OR
                      LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
                      OR LOWER(p.short_description) LIKE LOWER(CONCAT('%', :keyword, '%'))
@@ -67,13 +73,13 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             FROM products p
             LEFT JOIN category c ON p.category_id = c.id
             WHERE
-                p.is_deleted = FALSE
+                p.is_deleted = b'0'
                 AND (:keyword IS NULL OR
                      LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
                      OR LOWER(p.short_description) LIKE LOWER(CONCAT('%', :keyword, '%'))
                      OR LOWER(p.sku) LIKE LOWER(CONCAT('%', :keyword, '%'))
                 )
-                AND (:categoryName IS NULL OR c.name = :categoryName)
+                AND (:categoryName IS NULL OR LOWER(c.name) LIKE LOWER(CONCAT('%', :categoryName , '%')))
                 AND (:status IS NULL OR p.status = :status)
                 AND (:minPrice IS NULL OR p.price >= :minPrice)
                 AND (:maxPrice IS NULL OR p.price <= :maxPrice)
@@ -95,6 +101,10 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             Pageable pageable
     );
 
+    /**
+     * Light related-products lookup for PDP recommendations.
+     * Assumes products already filtered to ACTIVE and not soft-deleted.
+     */
     @Query(
             value = """
             SELECT 
@@ -112,7 +122,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                 p.rating_count                  AS ratingCount,
                 p.is_featured                   AS isFeatured,
                 p.is_new                        AS isNew,
-                 p.status                       AS status,
+                p.status                        AS status,
                 c.id                            AS categoryId,
                 c.name                          AS categoryName,
                 c.slug                          AS categorySlug,

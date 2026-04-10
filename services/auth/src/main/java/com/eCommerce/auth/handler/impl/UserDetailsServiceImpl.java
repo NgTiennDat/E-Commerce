@@ -24,25 +24,8 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        var user = userRepository.findByUsername(username);
-        if (user.isEmpty()) {
-            throw new UsernameNotFoundException("User not found");
-        }
-        return user.get();
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
     }
-
-    /**
-     * Checks if a user has permission to access a specific resource with a given method.
-     *
-     * @param username The username of the user.
-     * @param path The path to check access for.
-     * @param method   The HTTP method (e.g., GET, POST) to check access for.
-     * @return True if the user has permission, false otherwise.
-     */
-    @Transactional(readOnly = true)
-    public boolean hasPermission(String username, String path, String method) {
-        return userRepository.hasPermission(username, path, method);
-    }
-
 
 }

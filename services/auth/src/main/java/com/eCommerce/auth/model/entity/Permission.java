@@ -18,13 +18,11 @@ import lombok.Setter;
 import java.util.Set;
 
 @Entity
-@Table(
-        name = "permissions",
+@Table(name = "permissions",
         uniqueConstraints = {
-                @UniqueConstraint(columnNames = {"code"}),
-                @UniqueConstraint(columnNames = {"path", "http_method"})
-        }
-)
+                @UniqueConstraint(name = "UK_permission_code", columnNames = "code"),
+                @UniqueConstraint(name = "UK_permission_path_method", columnNames = {"path", "http_method"})
+        })
 @Getter
 @Setter
 @NoArgsConstructor
