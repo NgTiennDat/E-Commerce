@@ -1,0 +1,99 @@
+# =============================================================================
+# MAVEN BUILD OUTPUT
+# =============================================================================
+# Thư mục build output của Maven — không bao giờ commit
+# Mỗi developer tự build lại từ source
+target/
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# Maven wrapper jar — chỉ cần script, không cần binary
+.mvn/wrapper/maven-wrapper.jar
+
+# =============================================================================
+# INTELLIJ IDEA
+# =============================================================================
+# Thư mục .idea chứa workspace config cá nhân (recent files, run configs...)
+# Mỗi developer có setting riêng, không nên share
+.idea/
+
+# File module của IntelliJ — được generate lại từ pom.xml
+*.iml
+*.iws
+*.ipr
+
+# =============================================================================
+# ECLIPSE / STS
+# =============================================================================
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# =============================================================================
+# NETBEANS
+# =============================================================================
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# =============================================================================
+# VS CODE
+# =============================================================================
+.vscode/
+
+# =============================================================================
+# SECRETS & ENVIRONMENT — QUAN TRỌNG NHẤT
+# =============================================================================
+# Không bao giờ commit file chứa secret, password, API key
+# Dùng application.yml với ${ENV_VAR:default} thay thế (đã làm ở S2)
+
+# File env local
+.env
+.env.local
+.env.*.local
+
+# File config override chứa secret thật
+application-local.yml
+application-local.properties
+application-prod.yml
+application-prod.properties
+*-secret.yml
+*-secret.properties
+
+# =============================================================================
+# LOGS
+# =============================================================================
+*.log
+logs/
+log/
+
+# =============================================================================
+# OS GENERATED
+# =============================================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# =============================================================================
+# MISC
+# =============================================================================
+# File tạm
+*.tmp
+*.swp
+*.bak
+
+# HELP.md do Spring Initializr generate — không có giá trị
+HELP.md

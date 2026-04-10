@@ -1,6 +1,7 @@
 package com.eCommerce.auth.controller;
 
 import com.eCommerce.auth.model.request.LoginRequest;
+import com.eCommerce.auth.model.request.RefreshTokenRequest;
 import com.eCommerce.auth.service.AuthService;
 import com.eCommerce.common.payload.Response;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,5 +29,23 @@ public class AuthController {
             HttpServletResponse response
     ) {
         return ResponseEntity.ok(Response.ofSucceeded(authService.doLogin(loginRequest, request, response)));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refresh(
+            @Valid @RequestBody RefreshTokenRequest refreshRequest,
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        return ResponseEntity.ok(Response.ofSucceeded(authService.refreshToken(refreshRequest, request, response)));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        authService.logout(request, response);
+        return ResponseEntity.ok(Response.ofSucceeded());
     }
 }

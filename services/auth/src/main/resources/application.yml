@@ -13,6 +13,24 @@ spring:
     description: API documentation for E-Buy Auth service
     version: 1.0.0
 
+  # Spring Cache dùng Redis làm backend
+  # Tại sao Redis thay vì Caffeine (in-memory)?
+  # Auth Service có thể chạy nhiều instance — Redis là distributed cache,
+  # đảm bảo tất cả instance đều thấy cùng 1 cache state.
+  # Nếu dùng Caffeine, mỗi instance có cache riêng — eviction không đồng bộ.
+  cache:
+    type: redis
+    redis:
+      # TTL 60 giây: permission stale tối đa 60s sau khi admin thay đổi.
+      # Trade-off: consistency vs performance.
+      # 60s là acceptable vì permission thay đổi rất hiếm (admin action),
+      # không phải real-time data.
+      time-to-live: 60000
+      # Không cache null value — nếu user không có permission,
+      # không lưu false vào cache để tránh cache negative result
+      # khi admin vừa cấp quyền mới cho user.
+      cache-null-values: false
+
 application:
   security:
     jwt:
@@ -23,3 +41,9 @@ application:
 redis:
   host: 127.0.0.1
   port: 6379
+
+# Secret dùng để authenticate request nội bộ giữa Gateway và Auth Service.
+# Chỉ Gateway biết giá trị này và gửi kèm trong header X-Internal-Secret.
+# Trong production: đặt qua environment variable, KHÔNG commit giá trị thật lên git.
+internal:
+  secret: ${INTERNAL_SECRET:dev-internal-secret-change-in-prod}
