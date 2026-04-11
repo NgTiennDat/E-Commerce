@@ -3,7 +3,7 @@ package com.eCommerce.customer.controller;
 import com.eCommerce.customer.model.dto.CustomerRequest;
 import com.eCommerce.customer.model.dto.CustomerResponse;
 import com.eCommerce.customer.model.dto.UpdateCustomerRequest;
-import com.eCommerce.customer.service.impl.CustomerServiceImpl;
+import com.eCommerce.customer.service.CustomerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -22,13 +22,13 @@ import java.util.List;
 @RequestMapping("/api/v1/customer")
 @RequiredArgsConstructor
 public class CustomerController {
-    private final CustomerServiceImpl customerServiceImpl;
+    private final CustomerService customerService;
 
     @PostMapping("/add-customer")
     public ResponseEntity<String> addCustomer(
             @RequestBody CustomerRequest request
     ) {
-        return ResponseEntity.ok(customerServiceImpl.addCustomer(request));
+        return ResponseEntity.ok(customerService.addCustomer(request));
     }
 
     @GetMapping("")
@@ -36,14 +36,14 @@ public class CustomerController {
             @RequestParam(value = "firstName", required = false) String firstName,
             @RequestParam(value = "lastName", required = false) String lastName
     ) {
-        return ResponseEntity.ok(customerServiceImpl.findAllCustomers(firstName, lastName));
+        return ResponseEntity.ok(customerService.findAllCustomers(firstName, lastName));
     }
 
     @GetMapping("/{customerId}")
     public ResponseEntity<CustomerResponse> findCustomer(
             @PathVariable("customerId") String customerId
     ) {
-        return ResponseEntity.ok(customerServiceImpl.findCustomer(customerId));
+        return ResponseEntity.ok(customerService.findCustomer(customerId));
     }
 
     @PutMapping("/{customerId}")
@@ -51,13 +51,13 @@ public class CustomerController {
             @PathVariable("customerId") String customerId,
             @RequestBody UpdateCustomerRequest request
     ) {
-        return ResponseEntity.ok(customerServiceImpl.updateCustomer(customerId, request));
+        return ResponseEntity.ok(customerService.updateCustomer(customerId, request));
     }
 
     @DeleteMapping("/{customerId}")
     public ResponseEntity<String> deleteCustomer(
             @PathVariable("customerId") String customerId
     ) {
-        return ResponseEntity.ok(customerServiceImpl.deleteCustomer(customerId));
+        return ResponseEntity.ok(customerService.deleteCustomer(customerId));
     }
 }

@@ -17,8 +17,7 @@ import com.eCommerce.common.payload.ResponseCode;
 import com.eCommerce.common.security.JwtUtils;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -26,11 +25,11 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Set;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
-    private static final Logger logger = LogManager.getLogger(UserServiceImpl.class);
     private static final String DEFAULT_ROLE_CODE = "CUSTOMER";
 
     private final UserRepository userRepository;
@@ -66,7 +65,7 @@ public class UserServiceImpl implements UserService {
         } catch (CustomException e) {
             throw e;
         } catch (Exception e) {
-            logger.error("Error while registering user: {}", e.getMessage(), e);
+            log.error("Error while registering user: {}", e.getMessage(), e);
             throw new CustomException(ResponseCode.INTERNAL_SERVER_ERROR);
         }
     }
@@ -99,7 +98,7 @@ public class UserServiceImpl implements UserService {
         } catch (CustomException e) {
             throw e;
         } catch (Exception e) {
-            logger.error("Error while creating user (admin): {}", e.getMessage(), e);
+            log.error("Error while creating user (admin): {}", e.getMessage(), e);
             throw new CustomException(ResponseCode.INTERNAL_SERVER_ERROR);
         }
     }
@@ -119,7 +118,7 @@ public class UserServiceImpl implements UserService {
         } catch (CustomException e) {
             throw e;
         } catch (Exception e) {
-            logger.error("Error while fetching profile: {}", e.getMessage(), e);
+            log.error("Error while fetching profile: {}", e.getMessage(), e);
             throw new CustomException(ResponseCode.INTERNAL_SERVER_ERROR);
         }
     }

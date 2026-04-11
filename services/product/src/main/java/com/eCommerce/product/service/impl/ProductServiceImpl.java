@@ -4,7 +4,7 @@ import com.eCommerce.common.exception.CustomException;
 import com.eCommerce.common.payload.ResponseCode;
 import com.eCommerce.product.model.entity.Category;
 import com.eCommerce.product.model.entity.Product;
-import com.eCommerce.product.model.enumn.ProductStatus;
+import com.eCommerce.product.model.enums.ProductStatus;
 import com.eCommerce.product.model.projection.ProductListProjection;
 import com.eCommerce.product.model.projection.RelatedProductProjection;
 import com.eCommerce.product.model.request.ProductPurchaseRequest;
@@ -24,24 +24,20 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
 /**
  * Core product orchestration.
- * Notes for future maintainers:
- *  - Concurrency: purchase flow is still vulnerable to oversell without DB locking/reservation.
- *  - Auditing: manual for now; migrate to Spring Data auditing when enabled.
- *  - Pricing: kept read-only here; calculation lives in mapper to centralize discount math.
+ * Auditing (createdAt, updatedAt, createdBy, updatedBy) được handle tự động
+ * bởi Spring Data JPA Auditing — không cần manual stamp trong service.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class ProductServiceImpl implements ProductService {
 
-    private static final String SYSTEM_ACTOR = "SYSTEM";
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 10;
     private static final int MAX_RELATED_LIMIT = 20;
@@ -51,12 +47,6 @@ public class ProductServiceImpl implements ProductService {
     private final CategoryRepository categoryRepository;
     private final ProductMapper productMapper;
 
-    /**
-     * Admin creates a product.
-     * - Validates category existence and SKU uniqueness up front to fail fast.
-     * - Defaults status to ACTIVE when missing to keep reads consistent.
-     * - Sets audit fields explicitly (until JPA auditing is enabled).
-     */
     @Override
     public Long addProduct(ProductRequest request) {
         Category category = getCategoryOrThrow(request.getCategoryId());
@@ -70,19 +60,11 @@ public class ProductServiceImpl implements ProductService {
             product.setStatus(ProductStatus.ACTIVE);
         }
 
-        stampAuditOnCreate(product);
-
         Long id = productRepository.save(product).getId();
         log.info("Product created sku={}, id={}", product.getSku(), id);
         return id;
     }
 
-    /**
-     * Bulk purchase flow (cart checkout).
-     * Transactional to keep stock deductions atomic within the service boundary.
-     * Concurrency caveat: still susceptible to oversell during flash sales.
-     * Replace with optimistic/pessimistic lock or a reservation service for high contention.
-     */
     @Override
     @Transactional(rollbackFor = CustomException.class)
     public List<ProductPurchaseResponse> purchaseProduct(List<ProductPurchaseRequest> requests) {
@@ -96,7 +78,6 @@ public class ProductServiceImpl implements ProductService {
 
         List<Long> ids = sorted.stream().map(ProductPurchaseRequest::getProductId).toList();
 
-        // Single fetch to reduce DB round trips; order-by-id to align with sorted list.
         List<Product> products = productRepository.findAllByIdInAndIsDeletedFalseOrderById(ids);
         if (products.size() != ids.size()) {
             throw new CustomException(ResponseCode.PRODUCT_NOT_FOUND);
@@ -122,15 +103,13 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public ProductResponse getProductDetail(Long productId) {
-        Product product = getProductOrThrow(productId);
-        return productMapper.toResponse(product);
+        return productMapper.toResponse(getProductOrThrow(productId));
     }
 
     @Override
     public Page<ProductResponse> getAllProductInCategory(Long categoryId, int page, int size) {
         Pageable pageable = buildPageable(page, size);
         Page<Product> products = productRepository.findAllByCategoryIdAndIsDeletedFalse(categoryId, pageable);
-
         log.debug("Category {} contains {} products", categoryId, products.getTotalElements());
         return products.map(productMapper::toResponse);
     }
@@ -154,10 +133,6 @@ public class ProductServiceImpl implements ProductService {
         return projectionPage.map(productMapper::mapToProductResponse);
     }
 
-    /**
-     * Admin updates product attributes (no price rules enforced here).
-     * Note: consider moving price-change policies and audit logging to a dedicated domain service.
-     */
     @Override
     public void updateProduct(Long productId, ProductRequest request) {
         Product product = getProductOrThrow(productId);
@@ -179,7 +154,6 @@ public class ProductServiceImpl implements ProductService {
         product.setIsFeatured(request.getIsFeatured());
         product.setIsNew(request.getIsNew());
 
-        stampAuditOnUpdate(product);
         productRepository.save(product);
         log.info("Product updated id={}", productId);
     }
@@ -188,8 +162,6 @@ public class ProductServiceImpl implements ProductService {
     public void deleteProduct(Long productId) {
         Product product = getProductOrThrow(productId);
         product.setIsDeleted(true);
-
-        stampAuditOnUpdate(product);
         productRepository.save(product);
         log.info("Product soft-deleted id={}", productId);
     }
@@ -197,7 +169,6 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public List<ProductResponse> getRelatedProducts(Long productId, int limit) {
         Product product = getProductOrThrow(productId);
-
         Long categoryId = product.getCategory().getId();
         int size = normalizeLimit(limit);
 
@@ -213,8 +184,6 @@ public class ProductServiceImpl implements ProductService {
     public void updateProductStatus(Long productId, ProductStatus status) {
         Product product = getProductOrThrow(productId);
         product.setStatus(status);
-
-        stampAuditOnUpdate(product);
         productRepository.save(product);
         log.info("Product status updated id={} status={}", productId, status);
     }
@@ -240,10 +209,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private int normalizeLimit(int limit) {
-        if (limit <= 0) {
-            return DEFAULT_RELATED_LIMIT;
-        }
-        return Math.min(limit, MAX_RELATED_LIMIT);
+        return (limit <= 0) ? DEFAULT_RELATED_LIMIT : Math.min(limit, MAX_RELATED_LIMIT);
     }
 
     private void assertPositiveQuantity(int quantity) {
@@ -256,16 +222,5 @@ public class ProductServiceImpl implements ProductService {
         if (product.getAvailableQuantity() < quantityRequested) {
             throw new CustomException(ResponseCode.PRODUCT_QUANTITY_NOT_ENOUGH);
         }
-    }
-
-    private void stampAuditOnCreate(Product product) {
-        product.setCreatedAt(LocalDateTime.now());
-        product.setCreatedBy(SYSTEM_ACTOR);
-        stampAuditOnUpdate(product);
-    }
-
-    private void stampAuditOnUpdate(Product product) {
-        product.setUpdatedAt(LocalDateTime.now());
-        product.setUpdatedBy(SYSTEM_ACTOR);
     }
 }

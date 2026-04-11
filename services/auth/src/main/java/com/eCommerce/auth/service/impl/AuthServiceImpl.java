@@ -9,6 +9,7 @@ import com.eCommerce.auth.model.response.UserResponse;
 import com.eCommerce.auth.repository.UserRepository;
 import com.eCommerce.auth.service.AuthService;
 import com.eCommerce.auth.service.RateLimiterService;
+import com.eCommerce.auth.service.RefreshTokenService;
 import com.eCommerce.common.exception.CustomException;
 import com.eCommerce.common.payload.ResponseCode;
 import com.eCommerce.common.redis.service.RedisService;
@@ -17,8 +18,7 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -27,17 +27,17 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
-
-    private static final Logger logger = LogManager.getLogger(AuthServiceImpl.class);
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
     private final RedisService redisService;
     private final RateLimiterService rateLimiterService;
+    private final RefreshTokenService refreshTokenService;
 
     @Value("${application.security.jwt.refresh-token.expiration}")
     private Long refreshTokenExpiration;
@@ -46,8 +46,9 @@ public class AuthServiceImpl implements AuthService {
     private Long accessTokenExpiration;
 
     @Override
-    public AuthResponse doLogin(LoginRequest loginRequest, HttpServletRequest request, HttpServletResponse response) {
-        // Simple per-IP limiter to slow brute-force; for production use gateway/distributed limiter.
+    public AuthResponse doLogin(LoginRequest loginRequest,
+                                HttpServletRequest request,
+                                HttpServletResponse response) {
         String ip = Optional.ofNullable(request.getRemoteAddr()).orElse("unknown");
         rateLimiterService.assertAllowed("login:" + ip);
 
@@ -59,17 +60,19 @@ public class AuthServiceImpl implements AuthService {
                 throw new CustomException(ResponseCode.INVALID_CREDENTIALS);
             }
 
-            return getAuthResponse(response, user);
+            return buildAuthResponse(response, user);
         } catch (CustomException e) {
             throw e;
         } catch (Exception e) {
-            logger.error("Error during login: {}", e.getMessage(), e);
+            log.error("Error during login: {}", e.getMessage(), e);
             throw new CustomException(ResponseCode.INTERNAL_SERVER_ERROR);
         }
     }
 
     @Override
-    public AuthResponse refreshToken(RefreshTokenRequest request, HttpServletRequest httpRequest, HttpServletResponse response) {
+    public AuthResponse refreshToken(RefreshTokenRequest request,
+                                     HttpServletRequest httpRequest,
+                                     HttpServletResponse response) {
         String incoming = request.getRefreshToken();
         if (incoming == null || incoming.isBlank()) {
             throw new CustomException(ResponseCode.INVALID_REQUEST);
@@ -78,9 +81,7 @@ public class AuthServiceImpl implements AuthService {
         String ip = Optional.ofNullable(httpRequest.getRemoteAddr()).orElse("unknown");
         rateLimiterService.assertAllowed("refresh:" + ip);
 
-        // Bước 1: Kiểm tra type trước khi parse username.
-        // Nếu client gửi nhầm access token vào đây, từ chối ngay.
-        // Không để logic xuống dưới mới phát hiện — fail fast.
+        // Bước 1: Kiểm tra đúng loại token — fail fast
         try {
             if (!jwtUtils.isRefreshToken(incoming)) {
                 throw new CustomException(ResponseCode.INVALID_CREDENTIALS);
@@ -88,11 +89,15 @@ public class AuthServiceImpl implements AuthService {
         } catch (CustomException e) {
             throw e;
         } catch (Exception ex) {
-            // Token bị tamper hoặc hết hạn — không lộ chi tiết lỗi ra ngoài
             throw new CustomException(ResponseCode.INVALID_CREDENTIALS);
         }
 
-        // Bước 2: Extract username sau khi đã xác nhận đúng loại token
+        // Bước 2: Validate token qua RefreshTokenService (blacklist + Redis + DB)
+        if (!refreshTokenService.validate(incoming)) {
+            throw new CustomException(ResponseCode.INVALID_CREDENTIALS);
+        }
+
+        // Bước 3: Extract username và load user
         String username;
         try {
             username = jwtUtils.extractUsername(incoming);
@@ -103,21 +108,53 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new CustomException(ResponseCode.USER_NOT_FOUND));
 
-        // Bước 3: Kiểm tra token có khớp với cái đang lưu trong Redis không
-        String redisKey = AuthConstants.REFRESH_TOKEN_BY_USER + user.getId();
-        Object cached = redisService.getValue(redisKey);
-        if (cached == null || !incoming.equals(cached.toString())) {
-            throw new CustomException(ResponseCode.INVALID_CREDENTIALS);
-        }
+        // Bước 4: Revoke token cũ (token rotation — mỗi refresh tạo token mới)
+        refreshTokenService.revoke(incoming);
 
-        return getAuthResponse(response, user);
+        return buildAuthResponse(response, user);
     }
 
-    private AuthResponse getAuthResponse(HttpServletResponse response, User user) {
-        // Hai method riêng biệt — khác nhau về expiry và claims
-        String newAccess  = jwtUtils.generateAccessToken(user);   // 15 phút, có roles
-        String newRefresh = jwtUtils.generateRefreshToken(user);  // 7 ngày, chỉ có type=refresh
-        cacheRefreshToken(user, newRefresh);
+    @Override
+    public void logout(HttpServletRequest request, HttpServletResponse response) {
+        // Blacklist access token
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith(AuthConstants.BEARER_PREFIX)) {
+            String token = authHeader.substring(AuthConstants.BEARER_PREFIX.length());
+            long ttl = accessTokenExpiration != null ? accessTokenExpiration : 3600_000L;
+            redisService.setValue(
+                    AuthConstants.TOKEN_BLACKLIST + token,
+                    "revoked",
+                    ttl,
+                    TimeUnit.MILLISECONDS
+            );
+        }
+
+        // Revoke refresh token
+        String refreshToken = extractRefreshCookie(request);
+        if (refreshToken != null && !refreshToken.isBlank()) {
+            try {
+                refreshTokenService.revoke(refreshToken);
+            } catch (Exception ignored) {
+                // Token đã hết hạn hoặc không tồn tại — logout vẫn tiếp tục
+            }
+        }
+
+        // Xóa cookie
+        Cookie cookie = new Cookie(AuthConstants.REFRESH_TOKEN_COOKIE, "");
+        cookie.setHttpOnly(true);
+        cookie.setSecure(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(0);
+        response.addCookie(cookie);
+    }
+
+    // -----------------------------------------------------------------------
+    // Private helpers
+    // -----------------------------------------------------------------------
+
+    private AuthResponse buildAuthResponse(HttpServletResponse response, User user) {
+        String newAccess  = jwtUtils.generateAccessToken(user);
+        String newRefresh = refreshTokenService.create(user);  // delegate hoàn toàn
         response.addCookie(buildRefreshCookie(newRefresh));
 
         return AuthResponse.builder()
@@ -128,47 +165,13 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 
-    @Override
-    public void logout(HttpServletRequest request, HttpServletResponse response) {
-        String authHeader = request.getHeader("Authorization");
-        if (authHeader != null && authHeader.startsWith(AuthConstants.BEARER_PREFIX)) {
-            String token = authHeader.substring(AuthConstants.BEARER_PREFIX.length());
-            long ttl = accessTokenExpiration != null ? accessTokenExpiration : 3600_000L;
-            redisService.setValue(AuthConstants.TOKEN_BLACKLIST + token, "revoked", ttl, TimeUnit.MILLISECONDS);
-        }
-
-        String refreshToken = extractRefreshCookie(request);
-        if (refreshToken != null && !refreshToken.isBlank()) {
-            try {
-                String username = jwtUtils.extractUsername(refreshToken);
-                userRepository.findByUsername(username).ifPresent(u ->
-                        redisService.delete(AuthConstants.REFRESH_TOKEN_BY_USER + u.getId()));
-            } catch (Exception ignored) {
-                // ignore invalid refresh on logout
-            }
-        }
-
-        Cookie cookie = new Cookie(AuthConstants.REFRESH_TOKEN_COOKIE, "");
+    private Cookie buildRefreshCookie(String refreshToken) {
+        Cookie cookie = new Cookie(AuthConstants.REFRESH_TOKEN_COOKIE, refreshToken);
         cookie.setHttpOnly(true);
         cookie.setSecure(true);
         cookie.setPath("/");
-        cookie.setMaxAge(0);
-        response.addCookie(cookie);
-    }
-
-    private void cacheRefreshToken(User user, String refreshToken) {
-        String refreshTokenKey = AuthConstants.REFRESH_TOKEN_BY_USER + user.getId();
-        redisService.setValue(refreshTokenKey, refreshToken, refreshTokenExpiration, TimeUnit.MILLISECONDS);
-        logger.info("Refresh token cached for userId={}", user.getId());
-    }
-
-    private Cookie buildRefreshCookie(String refreshToken) {
-        Cookie refreshTokenCookies = new Cookie(AuthConstants.REFRESH_TOKEN_COOKIE, refreshToken);
-        refreshTokenCookies.setHttpOnly(true);
-        refreshTokenCookies.setSecure(true);
-        refreshTokenCookies.setPath("/");
-        refreshTokenCookies.setMaxAge((int) (refreshTokenExpiration / 1000));
-        return refreshTokenCookies;
+        cookie.setMaxAge((int) (refreshTokenExpiration / 1000));
+        return cookie;
     }
 
     private String extractRefreshCookie(HttpServletRequest request) {

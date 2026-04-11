@@ -1,4 +1,4 @@
-package com.eCommerce.product.model.enumn;
+package com.eCommerce.product.model.enums;
 
 public enum ProductStatus {
     ACTIVE,

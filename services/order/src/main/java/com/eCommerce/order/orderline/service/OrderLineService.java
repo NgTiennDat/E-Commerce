@@ -6,29 +6,30 @@ import com.eCommerce.order.orderline.model.OrderLineRequest;
 import com.eCommerce.order.orderline.model.OrderLineResponse;
 import com.eCommerce.order.orderline.repository.OrderLineRepository;
 import lombok.RequiredArgsConstructor;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class OrderLineService {
-    private final Logger logger = LogManager.getLogger(OrderLineService.class);
     private final OrderLineRepository orderLineRepository;
 
     public Integer saveOrderLine(OrderLineRequest request) {
-        var order = new OrderLine();
-        order.setId(request.getOrderId());
-        order.setProductId(request.getProductId());
-        order.setQuantity(request.getQuantity());
-        order.setOrder(
+        // Tên biến đổi từ "order" → "orderLine" — tránh nhầm lẫn với Order entity.
+        // Không set id thủ công — id do DB auto-generate qua GenerationType.IDENTITY.
+        // Bug cũ: order.setId(request.getOrderId()) đang set id của OrderLine = orderId — sai hoàn toàn.
+        var orderLine = new OrderLine();
+        orderLine.setProductId(request.getProductId());
+        orderLine.setQuantity(request.getQuantity());
+        orderLine.setOrder(
                 Order.builder()
                         .id(request.getOrderId())
                         .build()
         );
-        return orderLineRepository.save(order).getId();
+        return orderLineRepository.save(orderLine).getId();
     }
 
     public List<OrderLineResponse> findAllByOrderId(Integer orderId) {

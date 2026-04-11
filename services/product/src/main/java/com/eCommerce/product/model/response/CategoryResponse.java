@@ -1,4 +1,4 @@
-package com.eCommerce.product.model.request;
+package com.eCommerce.product.model.response;
 
 import lombok.Builder;
 import lombok.Data;

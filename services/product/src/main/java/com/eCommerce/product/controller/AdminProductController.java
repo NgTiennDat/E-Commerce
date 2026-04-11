@@ -1,7 +1,7 @@
 package com.eCommerce.product.controller;
 
 import com.eCommerce.common.payload.Response;
-import com.eCommerce.product.model.enumn.ProductStatus;
+import com.eCommerce.product.model.enums.ProductStatus;
 import com.eCommerce.product.model.request.ProductRequest;
 import com.eCommerce.product.service.ProductService;
 import lombok.RequiredArgsConstructor;

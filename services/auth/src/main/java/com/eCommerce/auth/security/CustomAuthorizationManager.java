@@ -1,4 +1,4 @@
-package com.eCommerce.auth.handler;
+package com.eCommerce.auth.security;
 
 import com.eCommerce.auth.model.entity.User;
 import com.eCommerce.auth.service.PermissionService;
@@ -13,19 +13,16 @@ import org.springframework.stereotype.Component;
 
 import java.util.function.Supplier;
 
+/**
+ * RBAC authorization manager cho auth-service internal endpoints.
+ * Dùng PermissionService để check quyền dựa trên username + path + method.
+ */
 @Component
 @RequiredArgsConstructor
 public class CustomAuthorizationManager implements AuthorizationManager<RequestAuthorizationContext> {
 
     private final PermissionService permissionService;
 
-    /**
-     * Checks whether the current user is authorized to access a specific resource.
-     *
-     * @param authenticationSupplier A supplier that provides the current Authentication object.
-     * @param requestContext         The context of the HTTP request being authorized.
-     * @return An AuthorizationDecision indicating whether access is granted or denied.
-     */
     @Override
     public AuthorizationDecision check(Supplier<Authentication> authenticationSupplier,
                                        RequestAuthorizationContext requestContext) {
@@ -40,17 +37,15 @@ public class CustomAuthorizationManager implements AuthorizationManager<RequestA
             return new AuthorizationDecision(false);
         }
 
-        boolean allowed = permissionService.hasPermission(user.getUsername(), request.getServletPath(), request.getMethod());
+        boolean allowed = permissionService.hasPermission(
+                user.getUsername(), request.getServletPath(), request.getMethod()
+        );
         return new AuthorizationDecision(allowed);
     }
 
-    /**
-     * Determines if the provided Authentication object is invalid.
-     *
-     * @param auth The Authentication object to validate.
-     * @return True if the authentication is invalid, false otherwise.
-     */
     private boolean isInvalidAuthentication(Authentication auth) {
-        return auth == null || !auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken;
+        return auth == null
+                || !auth.isAuthenticated()
+                || auth instanceof AnonymousAuthenticationToken;
     }
 }

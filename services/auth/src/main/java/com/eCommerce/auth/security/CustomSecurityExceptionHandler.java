@@ -1,4 +1,4 @@
-package com.eCommerce.auth.handler;
+package com.eCommerce.auth.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,6 +18,10 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
+/**
+ * Xử lý lỗi authentication (401) và authorization (403) từ Spring Security.
+ * Trả về JSON response thay vì redirect về login page mặc định.
+ */
 @Component
 @RequiredArgsConstructor
 public class CustomSecurityExceptionHandler implements AccessDeniedHandler, AuthenticationEntryPoint {
@@ -48,28 +52,24 @@ public class CustomSecurityExceptionHandler implements AccessDeniedHandler, Auth
     private void writeResponse(HttpServletResponse response, int status,
                                int code, String titleError) throws IOException {
         Locale locale = LocaleContextHolder.getLocale();
-        String message = messageSource.getMessage(titleError, null, "An unexpected error occurred", locale);
+        String message = messageSource.getMessage(
+                titleError, null, "An unexpected error occurred", locale
+        );
         Map<String, Object> body = new HashMap<>();
-
         body.put("code", code);
         body.put("message", message);
         body.put("titleError", titleError);
-
         writeJsonResponse(response, status, body);
     }
 
-    private void writeJsonResponse(HttpServletResponse response, int status, Map<String, Object> body)
-            throws IOException {
+    private void writeJsonResponse(HttpServletResponse response, int status,
+                                   Map<String, Object> body) throws IOException {
         response.setStatus(status);
         response.setContentType("application/json;charset=UTF-8");
-        response.addHeader("Expires", "Mon, 26 Jul 1997 05:00:00 GMT");
-        response.addHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
-        response.addHeader("Content-Type", "application/json; charset=utf-8");
+        response.addHeader("Cache-Control", "no-store, no-cache, must-revalidate");
         response.addHeader("X-Content-Type-Options", "nosniff");
-        response.addHeader("X-Robots-Tag", "noindex, nofollow");
-        response.addHeader("X-XSS-Protection", "1; mode=block");
         response.addHeader("X-Frame-Options", "DENY");
-
+        response.addHeader("X-XSS-Protection", "1; mode=block");
         response.getWriter().write(objectMapper.writeValueAsString(body));
     }
 }

@@ -12,16 +12,30 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.util.List;
 
-@EqualsAndHashCode(callSuper = true)
-@Data
-@AllArgsConstructor
+/**
+ * Vấn đề cũ: @Data + @EqualsAndHashCode(callSuper = true)
+ *
+ * callSuper = true include các fields từ Audit (createdAt, updatedAt, isDeleted)
+ * vào equals/hashCode. Điều này sai về mặt semantic:
+ *
+ * 2 Category cùng id, cùng name, cùng slug nhưng khác updatedAt
+ * → equals() trả về false → chúng "không bằng nhau"
+ *
+ * Entity equality phải dựa trên identity (id/business key),
+ * không phải state (audit timestamps).
+ * updatedAt thay đổi mỗi lần save → hashCode thay đổi liên tục
+ * → entity trong HashSet/HashMap bị "mất" sau mỗi lần update.
+ */
+@Getter
+@Setter
 @NoArgsConstructor
+@AllArgsConstructor
 @Builder
 @Entity
 @Table(name = "category")
@@ -37,27 +51,21 @@ public class Category extends Audit {
     @Column(name = "description", length = 1000)
     private String description;
 
-    // SEO friendly URL: vd: "keyboards", "monitors"
     @Column(unique = true, name = "slug")
     private String slug;
 
-    // Ảnh đại diện cho category (hiển thị ở UI)
     @Column(name = "image_url")
     private String imageUrl;
 
-    // Icon nhỏ cho menu/sidebar (có thể là tên icon hoặc URL)\
     @Column(name = "icon")
     private String icon;
 
-    // Có đang active để hiển thị ở storefront không
     @Column(name = "is_active")
     private Boolean isActive;
 
-    // Thứ tự hiển thị (sort trên UI)
     @Column(name = "display_order")
     private Integer displayOrder;
 
-    // Danh mục cha (để tạo tree nếu sau này cần: Keyboard ⟶ Mechanical, Wireless)
     @ManyToOne
     @JoinColumn(name = "parent_id")
     private Category parent;
@@ -67,4 +75,16 @@ public class Category extends Audit {
 
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL)
     private List<Product> products;
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Category other)) return false;
+        return id != null && id.equals(other.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
 }
