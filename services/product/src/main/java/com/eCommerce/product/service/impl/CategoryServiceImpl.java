@@ -15,20 +15,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-
 /**
  * Category orchestration.
- * - Keeps list/search lightweight by using projections.
- * - Soft-delete aware lookups to avoid leaking removed categories.
- * - Slug uniqueness enforced to keep SEO-friendly URLs stable.
+ * Auditing được handle tự động bởi Spring Data JPA Auditing.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class CategoryServiceImpl implements CategoryService {
-
-    private static final String SYSTEM_ACTOR = "SYSTEM";
 
     private final CategoryRepository categoryRepository;
 
@@ -82,8 +76,6 @@ public class CategoryServiceImpl implements CategoryService {
         category.setSlug(request.getSlug());
         category.setIsActive(request.getIsActive() != null ? request.getIsActive() : Boolean.TRUE);
 
-        stampAuditOnCreate(category);
-
         Long id = categoryRepository.save(category).getId();
         log.info("Category created slug={}, id={}", category.getSlug(), id);
         return id;
@@ -105,7 +97,6 @@ public class CategoryServiceImpl implements CategoryService {
             category.setIsActive(request.getIsActive());
         }
 
-        stampAuditOnUpdate(category);
         categoryRepository.save(category);
         log.info("Category updated id={}", categoryId);
     }
@@ -114,8 +105,6 @@ public class CategoryServiceImpl implements CategoryService {
     public void deleteCategory(Long categoryId) {
         Category category = getCategoryOrThrow(categoryId);
         category.setIsDeleted(true);
-
-        stampAuditOnUpdate(category);
         categoryRepository.save(category);
         log.info("Category soft-deleted id={}", categoryId);
     }
@@ -124,8 +113,6 @@ public class CategoryServiceImpl implements CategoryService {
     public void updateCategoryStatus(Long categoryId, Boolean isActive) {
         Category category = getCategoryOrThrow(categoryId);
         category.setIsActive(Boolean.TRUE.equals(isActive));
-
-        stampAuditOnUpdate(category);
         categoryRepository.save(category);
         log.info("Category status updated id={} active={}", categoryId, isActive);
     }
@@ -145,18 +132,6 @@ public class CategoryServiceImpl implements CategoryService {
         dto.setName(projection.getName());
         dto.setSlug(projection.getSlug());
         dto.setIsActive(projection.getIsActive());
-        // list view omits heavy fields (description/image/icon) by design
         return dto;
-    }
-
-    private void stampAuditOnCreate(Category category) {
-        category.setCreatedAt(LocalDateTime.now());
-        category.setCreatedBy(SYSTEM_ACTOR);
-        stampAuditOnUpdate(category);
-    }
-
-    private void stampAuditOnUpdate(Category category) {
-        category.setUpdatedAt(LocalDateTime.now());
-        category.setUpdatedBy(SYSTEM_ACTOR);
     }
 }

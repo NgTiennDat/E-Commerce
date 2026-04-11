@@ -3,7 +3,7 @@ package com.eCommerce.product.service.mapper;
 import com.eCommerce.product.model.dto.CategoryDto;
 import com.eCommerce.product.model.entity.Category;
 import com.eCommerce.product.model.entity.Product;
-import com.eCommerce.product.model.enumn.ProductStatus;
+import com.eCommerce.product.model.enums.ProductStatus;
 import com.eCommerce.product.model.projection.ProductListProjection;
 import com.eCommerce.product.model.projection.RelatedProductProjection;
 import com.eCommerce.product.model.request.ProductRequest;

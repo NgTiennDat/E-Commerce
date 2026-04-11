@@ -1,4 +1,4 @@
-package com.eCommerce.auth.handler.impl;
+package com.eCommerce.auth.security;
 
 import com.eCommerce.auth.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,18 +14,10 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     private final UserRepository userRepository;
 
-    /**
-     * Loads a user by their username.
-     *
-     * @param username The username of the user to load.
-     * @return A UserDetailsImpl object containing user details.
-     * @throws UsernameNotFoundException If the user is not found in the database.
-     */
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
     }
-
 }

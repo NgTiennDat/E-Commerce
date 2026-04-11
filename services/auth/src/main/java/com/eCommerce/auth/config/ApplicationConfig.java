@@ -1,6 +1,6 @@
 package com.eCommerce.auth.config;
 
-import com.eCommerce.auth.handler.impl.UserDetailsServiceImpl;
+import com.eCommerce.auth.security.UserDetailsServiceImpl;
 import com.eCommerce.auth.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;

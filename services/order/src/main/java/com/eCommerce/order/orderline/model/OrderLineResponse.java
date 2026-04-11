@@ -11,5 +11,5 @@ import lombok.NoArgsConstructor;
 @Builder
 public class OrderLineResponse {
     private Integer id;
-    private double quantity;
+    private Integer quantity;
 }

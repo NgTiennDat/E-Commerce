@@ -1,8 +1,8 @@
 package com.eCommerce.auth.config;
 
 import com.eCommerce.auth.filter.JwtAuthFilter;
-import com.eCommerce.auth.handler.OAuth2SuccessHandler;
-import com.eCommerce.auth.secService.CustomOAuth2UserService;
+import com.eCommerce.auth.security.CustomOAuth2UserService;
+import com.eCommerce.auth.security.oauth2.OAuth2SuccessHandler;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;

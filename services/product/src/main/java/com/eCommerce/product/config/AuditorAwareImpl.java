@@ -1,47 +1,51 @@
-package com.eCommerce.auth.common;
+package com.eCommerce.product.config;
 
 import org.springframework.data.domain.AuditorAware;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Component;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Component;
 
 import java.util.Optional;
 
 /**
- * Implementation of AuditorAware to provide the current auditor (username)
- * for JPA auditing (created_by, updated_by fields)
- * Note: This will only be called after authentication is verified by CustomAuthorizationManager,
- * so authentication should always be present.
+ * Cung cấp username hiện tại cho Spring Data JPA Auditing.
+ * Được dùng bởi @CreatedBy và @LastModifiedBy trong Audit base class.
+ *
+ * Product-service nhận request từ Gateway — JWT đã được validate tại Gateway.
+ * Gateway forward username qua SecurityContext (nếu có filter extract header)
+ * hoặc không có context → fallback về "SYSTEM".
+ *
+ * "SYSTEM" là giá trị hợp lý cho product-service vì:
+ *   - Các thao tác admin (create/update product) đến từ Gateway
+ *   - Gateway đã authenticate user, product-service tin tưởng Gateway
+ *   - Nếu cần audit chi tiết hơn, cần thêm filter extract X-User-Id header
  */
-@Component
+@Component("productAuditorAware")
 public class AuditorAwareImpl implements AuditorAware<String> {
+
+    private static final String SYSTEM = "SYSTEM";
 
     @Override
     public Optional<String> getCurrentAuditor() {
-
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        // Nếu chưa login hoặc là anonymous → ghi SYSTEM
         if (authentication == null
                 || !authentication.isAuthenticated()
-                || authentication.getPrincipal().equals("anonymousUser")) {
-            return Optional.of("SYSTEM");
+                || "anonymousUser".equals(authentication.getPrincipal())) {
+            return Optional.of(SYSTEM);
         }
 
         Object principal = authentication.getPrincipal();
 
-        // Nếu principal là UserDetails → lấy username
         if (principal instanceof UserDetails userDetails) {
             return Optional.ofNullable(userDetails.getUsername());
         }
 
-        // Nếu principal là String (ví dụ JWT custom)
         if (principal instanceof String username) {
             return Optional.of(username);
         }
 
-        // Cuối cùng fallback về authentication name
         return Optional.ofNullable(authentication.getName());
     }
 }

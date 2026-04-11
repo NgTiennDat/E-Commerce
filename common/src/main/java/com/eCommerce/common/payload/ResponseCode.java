@@ -26,7 +26,10 @@ public enum ResponseCode {
     PRODUCT_QUANTITY_NOT_ENOUGH("PRD_400", "Product quantity not enough", HttpStatus.BAD_REQUEST),
 
     // ======= Category ========
-    CATEGORY_NOT_FOUND("CAT_404", "Category not found" , HttpStatus.NOT_FOUND );
+    CATEGORY_NOT_FOUND("CAT_404", "Category not found" , HttpStatus.NOT_FOUND),
+
+    // ======= Customer ========
+    CUSTOMER_NOT_FOUND("CUS_404", "Customer not found", HttpStatus.NOT_FOUND);
 
 
     private final String code;

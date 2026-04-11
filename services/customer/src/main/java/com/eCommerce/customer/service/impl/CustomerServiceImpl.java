@@ -7,7 +7,7 @@ import com.eCommerce.customer.model.dto.CustomerRequest;
 import com.eCommerce.customer.model.dto.CustomerResponse;
 import com.eCommerce.customer.model.dto.UpdateCustomerRequest;
 import com.eCommerce.customer.repository.CustomerRepository;
-import com.eCommerce.customer.service.CustomerMapper;
+import com.eCommerce.customer.service.mapper.CustomerMapper;
 import com.eCommerce.customer.service.CustomerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -50,11 +50,9 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     public CustomerResponse findCustomer(String customerId) {
-        var customers = customerRepository.findById(customerId);
-        if(customers.isEmpty()) {
-            throw new CustomException(ResponseCode.NO_CODE);
-        }
-        return customerMapper.fromCustomer(customers.get());
+        return customerRepository.findById(customerId)
+                .map(customerMapper::fromCustomer)
+                .orElseThrow(() -> new CustomException(ResponseCode.CUSTOMER_NOT_FOUND));
     }
 
     public String updateCustomer(String customerId, UpdateCustomerRequest request) {

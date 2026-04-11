@@ -1,6 +1,6 @@
 package com.eCommerce.product.model.entity;
 
-import com.eCommerce.product.model.enumn.ProductStatus;
+import com.eCommerce.product.model.enums.ProductStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -14,14 +14,16 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 
-@Data
-@AllArgsConstructor
+@Getter
+@Setter
 @NoArgsConstructor
+@AllArgsConstructor
 @Builder
 @Entity
 @Table(name = "products")
@@ -31,53 +33,42 @@ public class Product extends Audit {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Mã sản phẩm, dùng cho quản lý, tìm kiếm nội bộ
     @Column(name = "sku", unique = true)
     private String sku;
 
     @Column(name = "name")
     private String name;
 
-    // Mô tả ngắn, dùng cho card trong list
     @Column(name = "short_description")
     private String shortDescription;
 
-    // Mô tả chi tiết
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
     @Column(name = "available_quantity")
     private Integer availableQuantity;
 
-
     @Column(name = "price")
     private BigDecimal price;
 
-    // % giảm giá, ví dụ 15 = giảm 15%
     @Column(name = "discount_percent")
     private Integer discountPercent;
 
-    // URL ảnh chính
     @Column(name = "image_url")
     private String imageUrl;
 
-    // Thương hiệu
     @Column(name = "brand")
     private String brand;
 
-    // Điểm rating trung bình (1.0 - 5.0)
     @Column(name = "rating")
     private Double rating;
 
-    // Số lượng đánh giá
     @Column(name = "rating_count")
     private Integer ratingCount;
 
-    // Sản phẩm nổi bật
     @Column(name = "is_featured")
     private Boolean isFeatured;
 
-    // Sản phẩm mới
     @Column(name = "is_new")
     private Boolean isNew;
 
@@ -91,4 +82,16 @@ public class Product extends Audit {
     @ManyToOne
     @JoinColumn(name = "category_id")
     private Category category;
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Product other)) return false;
+        return id != null && id.equals(other.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
 }

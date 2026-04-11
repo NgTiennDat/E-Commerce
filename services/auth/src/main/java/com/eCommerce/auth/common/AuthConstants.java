@@ -31,11 +31,18 @@ public final class AuthConstants {
     // =====================================================================
 
     /**
-     * Prefix cho refresh token lưu theo userId.
-     * Key đầy đủ: REFRESH_TOKEN_BY_USER + userId
-     * Dùng ở: AuthServiceImpl (ghi/xóa), AuthServiceImpl.refreshToken (đọc)
+     * Prefix cho refresh token lưu theo token value — hỗ trợ multi-device.
+     * Key đầy đủ: REFRESH_TOKEN_BY_VALUE + tokenString → username
+     * Dùng ở: RefreshTokenServiceImpl (ghi khi login, đọc khi validate, xóa khi revoke)
      */
-    public static final String REFRESH_TOKEN_BY_USER = "auth:refresh_token:";
+    public static final String REFRESH_TOKEN_BY_VALUE = "auth:rt:token:";
+
+    /**
+     * Prefix cho refresh token đã bị revoke (blacklist).
+     * Key đầy đủ: REFRESH_TOKEN_BLACKLIST + tokenString
+     * Dùng ở: RefreshTokenServiceImpl (ghi khi revoke, đọc khi validate)
+     */
+    public static final String REFRESH_TOKEN_BLACKLIST = "auth:rt:blacklist:";
 
     /**
      * Prefix cho access token đã bị blacklist sau khi logout.

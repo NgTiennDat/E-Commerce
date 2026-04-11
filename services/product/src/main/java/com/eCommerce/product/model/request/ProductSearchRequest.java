@@ -1,6 +1,6 @@
 package com.eCommerce.product.model.request;
 
-import com.eCommerce.product.model.enumn.ProductStatus;
+import com.eCommerce.product.model.enums.ProductStatus;
 import lombok.Getter;
 import lombok.Setter;
 
