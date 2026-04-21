@@ -10,6 +10,14 @@ public interface CustomerService {
     String addCustomer(CustomerRequest request);
     List<CustomerResponse> findAllCustomers(String firstName, String lastName);
     CustomerResponse findCustomer(String customerId);
+
+    /**
+     * Lookup customer theo email.
+     * Dùng bởi Order Service (qua Feign client) để lấy customerId
+     * khi tạo đơn hàng.
+     */
+    CustomerResponse findCustomerByEmail(String email);
+
     String updateCustomer(String customerId, UpdateCustomerRequest request);
     String deleteCustomer(String customerId);
 }

@@ -46,6 +46,21 @@ public class CustomerController {
         return ResponseEntity.ok(customerService.findCustomer(customerId));
     }
 
+    /**
+     * Lookup customer theo email.
+     * Internal endpoint — dùng bởi Order Service qua Feign client.
+     *
+     * Tại sao dùng @RequestParam thay vì @PathVariable?
+     * Email có thể chứa ký tự đặc biệt ("+", ".") gây vấn đề khi encode trong URL path.
+     * Query param an toàn hơn cho email.
+     */
+    @GetMapping("/by-email")
+    public ResponseEntity<CustomerResponse> findCustomerByEmail(
+            @RequestParam("email") String email
+    ) {
+        return ResponseEntity.ok(customerService.findCustomerByEmail(email));
+    }
+
     @PutMapping("/{customerId}")
     public ResponseEntity<String> updateCustomer(
             @PathVariable("customerId") String customerId,

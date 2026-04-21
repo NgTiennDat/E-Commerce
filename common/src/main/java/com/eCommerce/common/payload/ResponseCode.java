@@ -29,8 +29,20 @@ public enum ResponseCode {
     CATEGORY_NOT_FOUND("CAT_404", "Category not found" , HttpStatus.NOT_FOUND),
 
     // ======= Customer ========
-    CUSTOMER_NOT_FOUND("CUS_404", "Customer not found", HttpStatus.NOT_FOUND);
+    CUSTOMER_NOT_FOUND("CUS_404", "Customer not found", HttpStatus.NOT_FOUND),
 
+    // ======= Order ========
+    ORDER_NOT_FOUND("ORD_404", "Order not found", HttpStatus.NOT_FOUND),
+    ORDER_CANNOT_BE_CANCELLED("ORD_400", "Order cannot be cancelled in current status", HttpStatus.BAD_REQUEST),
+
+    // ======= File ========
+    FILE_EMPTY("FILE_400", "File must not be empty", HttpStatus.BAD_REQUEST),
+    FILE_TOO_LARGE("FILE_413", "File size exceeds the maximum allowed limit", HttpStatus.PAYLOAD_TOO_LARGE),
+    FILE_TYPE_NOT_SUPPORTED("FILE_415", "File type is not supported", HttpStatus.UNSUPPORTED_MEDIA_TYPE),
+    FILE_UPLOAD_FAILED("FILE_500", "Failed to upload file", HttpStatus.INTERNAL_SERVER_ERROR),
+    FILE_DELETE_FAILED("FILE_501", "Failed to delete file", HttpStatus.INTERNAL_SERVER_ERROR),
+    FILE_NOT_FOUND("FILE_404", "File not found", HttpStatus.NOT_FOUND),
+    STORAGE_UNAVAILABLE("FILE_503", "Storage service is unavailable", HttpStatus.SERVICE_UNAVAILABLE);
 
     private final String code;
     private final String message;

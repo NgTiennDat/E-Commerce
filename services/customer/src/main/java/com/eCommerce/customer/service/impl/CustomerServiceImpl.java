@@ -53,6 +53,15 @@ public class CustomerServiceImpl implements CustomerService {
         return customerRepository.findById(customerId)
                 .map(customerMapper::fromCustomer)
                 .orElseThrow(() -> new CustomException(ResponseCode.CUSTOMER_NOT_FOUND));
+        return customerRepository.findById(customerId)
+                .map(customerMapper::fromCustomer)
+                .orElseThrow(() -> new CustomException(ResponseCode.CUSTOMER_NOT_FOUND));
+    }
+
+    public CustomerResponse findCustomerByEmail(String email) {
+        return customerRepository.findByEmail(email)
+                .map(customerMapper::fromCustomer)
+                .orElseThrow(() -> new CustomException(ResponseCode.CUSTOMER_NOT_FOUND));
     }
 
     public String updateCustomer(String customerId, UpdateCustomerRequest request) {

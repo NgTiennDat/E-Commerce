@@ -1,17 +1,46 @@
+# =============================================================================
+# Shared config — áp dụng cho TẤT CẢ service
+# Các service có thể override bằng file riêng (auth-service.yml, ...)
+# =============================================================================
+
 eureka:
   instance:
     hostname: localhost
+    prefer-ip-address: true
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka
-name:
-  value: datien
+
 spring:
   cloud:
     config:
       override-system-properties: false
 
+  # Kafka shared config — mỗi service override producer/consumer nếu cần
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9093}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+    consumer:
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.eCommerce.common.events"
+        spring.json.add.type.headers: false
+
+# Distributed tracing — gửi 100% trace đến Zipkin
 management:
   tracing:
     sampling:
       probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: http://localhost:9411/api/v2/spans
+
+# Internal service-to-service secret
+internal:
+  secret: ${INTERNAL_SECRET:dev-internal-secret-change-in-prod}

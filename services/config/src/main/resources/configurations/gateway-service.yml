@@ -1,33 +1,78 @@
 server:
   port: 8222
+
 spring:
   cloud:
     gateway:
       discovery:
         locator:
           enabled: true
+          lower-case-service-id: true
       routes:
+        # Auth Service
         - id: auth-service
           uri: lb://AUTH-SERVICE
           predicates:
-            - Path=/api/v1/auth/**
-        - id: customer-service
-          uri: lb://CUSTOMER-SERVICE
+            - Path=/api/v1/auth/**,/api/v1/user/**,/api/v1/admin/users/**
+
+        # Product Service — public + admin
+        - id: product-service
+          uri: lb://PRODUCT-SERVICE
           predicates:
-            - Path=/api/v1/customers/**
+            - Path=/api/v1/products/**,/api/v1/categories/**,/api/v1/admin/products/**,/api/v1/admin/categories/**
+
+        # Order Service
         - id: order-service
           uri: lb://ORDER-SERVICE
           predicates:
             - Path=/api/v1/orders/**
-        - id: order-lines-service
-          uri: lb://ORDER-SERVICE
+
+        # Customer Service
+        - id: customer-service
+          uri: lb://CUSTOMER-SERVICE
           predicates:
-            - Path=/api/v1/order-lines/**
-        - id: product-service
-          uri: lb://PRODUCT-SERVICE
-          predicates:
-            - Path=/api/v1/products/**,/api/v1/admin/products/**,/api/v1/categories/**,/api/v1/admin/categories/**
+            - Path=/api/v1/customer/**
+
+        # Payment Service
         - id: payment-service
           uri: lb://PAYMENT-SERVICE
           predicates:
             - Path=/api/v1/payments/**
+
+        # Cart Service
+        - id: cart-service
+          uri: lb://CART-SERVICE
+          predicates:
+            - Path=/api/v1/cart/**
+
+        # Inventory Service
+        - id: inventory-service
+          uri: lb://INVENTORY-SERVICE
+          predicates:
+            - Path=/api/v1/inventory/**
+
+        # Delivery Service
+        - id: delivery-service
+          uri: lb://DELIVERY-SERVICE
+          predicates:
+            - Path=/api/v1/delivery/**
+
+# JWT — Gateway cần để validate token
+application:
+  security:
+    jwt:
+      secret-key: ${JWT_SECRET_KEY:YoVBs+fSApwsrc0fZeUG7tFtyRjc4nIixENeTMlkwSXdmnCSS48XPYhUO29JPqeO}
+      expiration: ${JWT_EXPIRATION:900000}
+      refresh-token:
+        expiration: ${JWT_REFRESH_EXPIRATION:604800000}
+
+auth-service:
+  base-url: http://AUTH-SERVICE
+
+app:
+  jwt:
+    enabled: true
+
+redis:
+  host: ${REDIS_HOST:localhost}
+  port: ${REDIS_PORT:6379}

@@ -1,23 +1,29 @@
 server:
   port: 8060
+
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/payment
+    url: jdbc:mysql://localhost:3306/payment?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
     username: root
-    password: root
+    password: ${MYSQL_ROOT_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
-      ddl-auto: create
-    database: postgresql
-    database-platform: org.hibernate.dialect.MySQLDialect
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
 
   kafka:
-    producer:
-      bootstrap-servers: localhost:9092
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-      properties:
-        spring.json.type.mapping: PaymentConfirmation:com.example.ecommerce.notification.PaymentNotificationRequest
-application:
-  config:
-    product-url: http://localhost:8222/api/v1/products
+    consumer:
+      group-id: payment-group
+
+# VNPay config — điền sau khi có tài khoản sandbox
+# Đăng ký tại: https://sandbox.vnpayment.vn/devreg/
+vnpay:
+  tmn-code: ${VNPAY_TMN_CODE:}
+  hash-secret: ${VNPAY_HASH_SECRET:}
+  url: ${VNPAY_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+  return-url: ${VNPAY_RETURN_URL:http://localhost:3000/payment/result}
+  api-url: https://sandbox.vnpayment.vn/merchant_webapi/api/transaction

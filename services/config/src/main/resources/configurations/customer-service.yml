@@ -1,12 +1,12 @@
+server:
+  port: 8090
+
 spring:
   data:
     mongodb:
-      username: admin
-      password: pass
-      port: 27017
-      database: customer
+      host: ${MONGO_HOST:localhost}
+      port: ${MONGO_PORT:27017}
+      database: ecommerce_customer
+      username: ${MONGO_ROOT_USERNAME:admin}
+      password: ${MONGO_ROOT_PASSWORD:ecommerce@2024}
       authentication-database: admin
-    application:
-      name: customer-service
-server:
-  port: 8090

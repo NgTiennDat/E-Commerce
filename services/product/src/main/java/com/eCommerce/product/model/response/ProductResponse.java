@@ -1,7 +1,7 @@
 package com.eCommerce.product.model.response;
 
 import com.eCommerce.product.model.dto.CategoryDto;
-import com.eCommerce.product.model.enumn.ProductStatus;
+import com.eCommerce.product.model.enums.ProductStatus;
 import lombok.Builder;
 import lombok.Data;
 

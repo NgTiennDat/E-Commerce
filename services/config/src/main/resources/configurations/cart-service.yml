@@ -1,0 +1,16 @@
+server:
+  port: 8055
+
+spring:
+  kafka:
+    consumer:
+      group-id: cart-group
+
+# Cart lưu trong Redis — không cần DB quan hệ
+# TTL mặc định 7 ngày, user không active thì cart tự xóa
+redis:
+  host: ${REDIS_HOST:localhost}
+  port: ${REDIS_PORT:6379}
+
+cart:
+  ttl-days: 7

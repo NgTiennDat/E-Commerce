@@ -1,8 +1,8 @@
 package com.eCommerce.product.service.mapper;
 
 import com.eCommerce.product.model.dto.CategoryDto;
-import com.eCommerce.product.model.request.CategoryResponse;
 import com.eCommerce.product.model.entity.Category;
+import com.eCommerce.product.model.response.CategoryResponse;
 
 import java.util.List;
 import java.util.stream.Collectors;

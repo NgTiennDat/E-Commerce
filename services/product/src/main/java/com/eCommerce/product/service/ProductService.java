@@ -1,6 +1,6 @@
 package com.eCommerce.product.service;
 
-import com.eCommerce.product.model.enumn.ProductStatus;
+import com.eCommerce.product.model.enums.ProductStatus;
 import com.eCommerce.product.model.request.ProductPurchaseRequest;
 import com.eCommerce.product.model.request.ProductRequest;
 import com.eCommerce.product.model.request.ProductSearchRequest;
