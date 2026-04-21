@@ -6,3 +6,7 @@ spring:
 redis:
   host: 127.0.0.1
   port: 6379
+
+# Seeder tắt mặc định — bật bằng seeder.enabled=true khi cần seed data
+seeder:
+  enabled: false

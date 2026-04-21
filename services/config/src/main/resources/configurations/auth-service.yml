@@ -1,21 +1,36 @@
+server:
+  port: 8040
+
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/auth
+    url: jdbc:mysql://localhost:3306/auth?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
     username: root
-    password: root
+    password: ${MYSQL_ROOT_PASSWORD:root}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
       ddl-auto: update
-    database: mysql
-    database-platform: org.hibernate.dialect.MySQL8Dialect
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: false
+
+  # Spring Cache — Redis backend cho RBAC permission cache
+  cache:
+    type: redis
+    redis:
+      time-to-live: 60000       # 60 giây
+      cache-null-values: false
+
+  # OAuth2 Google (optional — điền sau khi có credentials)
   security:
     oauth2:
       client:
         registration:
           google:
-            client-id: your-google-client-id
-            client-secret: your-google-client-secret
+            client-id: ${GOOGLE_CLIENT_ID:}
+            client-secret: ${GOOGLE_CLIENT_SECRET:}
             scope: openid,profile,email
             redirect-uri: "{baseUrl}/login/oauth2/code/google"
         provider:
@@ -24,19 +39,25 @@ spring:
             token-uri: https://oauth2.googleapis.com/token
             user-info-uri: https://www.googleapis.com/userinfo/v2/me
             user-name-attribute: email
+
   kafka:
-    bootstrap-servers: localhost:9092
     consumer:
-      group-id: payment-service-group
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
-      properties:
-        spring.json.trusted.packages: "com.eCommerce.common.events"
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-      properties:
-        spring.json.type.mapping: orderConfirmation:com.ecommerce.kafka.OrderConfirmation
-        spring.json.trusted.packages: "com.eCommerce.common.events"
-server:
-  port: 8040
+      group-id: auth-group
+
+# JWT config
+application:
+  security:
+    jwt:
+      secret-key: ${JWT_SECRET_KEY:YoVBs+fSApwsrc0fZeUG7tFtyRjc4nIixENeTMlkwSXdmnCSS48XPYhUO29JPqeO}
+      expiration: ${JWT_EXPIRATION:900000}
+      refresh-token:
+        expiration: ${JWT_REFRESH_EXPIRATION:604800000}
+
+# Redis
+redis:
+  host: ${REDIS_HOST:localhost}
+  port: ${REDIS_PORT:6379}
+
+app:
+  jwt:
+    enabled: true

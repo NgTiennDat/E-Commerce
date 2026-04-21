@@ -1,5 +1,6 @@
 package com.eCommerce.order.order.model;
 
+import com.eCommerce.order.order.model.enums.OrderStatus;
 import com.eCommerce.order.orderline.model.OrderLine;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -55,22 +56,39 @@ import java.util.List;
 @Builder
 @Entity
 @EntityListeners(AuditingEntityListener.class)
-@Table(name = "customer_order")
+@Table(name = "orders")
 public class Order {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
+    // Mã đơn hàng hiển thị cho user, dạng: ORD-20240101-XXXXX
     @Column(unique = true, nullable = false)
     private String reference;
+
+    // userId từ auth-service (JWT subject)
+    @Column(nullable = false)
+    private Long userId;
+
+    // Email để gửi notification — lưu lại tránh phải lookup lại
+    @Column(nullable = false)
+    private String userEmail;
+
+    // customerId từ MongoDB Customer Service
+    @Column(nullable = false)
+    private String customerId;
 
     private BigDecimal totalAmount;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private PaymentMethod paymentMethod;
 
-    private String customerId;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private OrderStatus status = OrderStatus.PENDING;
 
     @OneToMany(mappedBy = "order")
     private List<OrderLine> orderLines;

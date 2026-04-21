@@ -1,27 +1,45 @@
 version: "3.8"
 
+# =============================================================================
+# E-Commerce Platform — Infrastructure Services
+#
+# Cách chạy:
+#   1. cp .env.example .env
+#   2. Điền giá trị vào .env
+#   3. docker-compose up -d
+#
+# Các service ứng dụng (Spring Boot) chạy local bằng IDE hoặc mvn spring-boot:run
+# Không include trong file này để dễ debug từng service.
+# =============================================================================
+
 services:
-  redis:
-    container_name: redis--pet-project
-    image: redis:7.2
-    ports:
-      - "6379:6379"
-    networks:
-      - microservices-net
+
+  # ---------------------------------------------------------------------------
+  # MySQL — dùng cho: auth, product, order, payment, inventory
+  # ---------------------------------------------------------------------------
   mysql:
     container_name: ms_mysql
     image: mysql:8.0
     environment:
-      MYSQL_ROOT_PASSWORD: tiendat1409
-      MYSQL_DATABASE: ecommerce
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --default-authentication-plugin=mysql_native_password
     ports:
       - "3306:3306"
     volumes:
       - mysql-data:/var/lib/mysql
+      - ./init-db:/docker-entrypoint-initdb.d   # chạy SQL khi container khởi tạo lần đầu
     networks:
       - microservices-net
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   phpmyadmin:
     container_name: ms_phpmyadmin
@@ -30,63 +48,80 @@ services:
       PMA_HOST: mysql
       PMA_PORT: 3306
       PMA_USER: root
-      PMA_PASSWORD: tiendat1409
+      PMA_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     ports:
       - "8080:80"
     networks:
       - microservices-net
+    depends_on:
+      mysql:
+        condition: service_healthy
     restart: unless-stopped
 
-  zipkin:
-    container_name: zipkin_e
-    image: openzipkin/zipkin
-    ports:
-      - "9411:9411"
-    networks:
-      - microservices-net
-
+  # ---------------------------------------------------------------------------
+  # MongoDB — dùng cho: customer
+  # ---------------------------------------------------------------------------
   mongo:
     container_name: ms_mongo_db
     image: mongo:5.0
     environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: pass
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
     ports:
       - "27017:27017"
     volumes:
-      - mongo:/data/db
+      - mongo-data:/data/db
     networks:
       - microservices-net
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   mongo-express:
     container_name: ms_mongo_express
     image: mongo-express:latest
     environment:
-      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
-      ME_CONFIG_MONGODB_ADMINPASSWORD: pass
+      ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_ROOT_USERNAME}
+      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_ROOT_PASSWORD}
       ME_CONFIG_MONGODB_SERVER: ms_mongo_db
     ports:
       - "8081:8081"
     networks:
       - microservices-net
-    depends_on: # Đảm bảo mongo khởi động trước
-      - mongo
+    depends_on:
+      mongo:
+        condition: service_healthy
     restart: unless-stopped
 
-  mail-dev:
-    container_name: ms_mail_dev
-    image: maildev/maildev
+  # ---------------------------------------------------------------------------
+  # Redis — dùng cho: auth (token cache), order (customer cache), cart
+  # ---------------------------------------------------------------------------
+  redis:
+    container_name: ms_redis
+    image: redis:7.2
+    command: redis-server --requirepass ${REDIS_PASSWORD}
     ports:
-      - "1080:1080"
-      - "1025:1025"
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
     networks:
       - microservices-net
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+  # ---------------------------------------------------------------------------
+  # Kafka + Zookeeper — event streaming
+  # ---------------------------------------------------------------------------
   zookeeper:
-    image: confluentinc/cp-zookeeper:latest
-    container_name: zookeeper
+    container_name: ms_zookeeper
+    image: confluentinc/cp-zookeeper:7.4.0
     environment:
       ZOOKEEPER_SERVER_ID: 1
       ZOOKEEPER_CLIENT_PORT: 2181
@@ -95,23 +130,68 @@ services:
       - "22181:2181"
     networks:
       - microservices-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   kafka:
-    image: confluentinc/cp-kafka:latest
     container_name: ms_kafka
+    image: confluentinc/cp-kafka:7.4.0
     ports:
       - "9092:9092"
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_healthy
     environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      # PLAINTEXT → dùng trong Docker network (service-to-service)
+      # PLAINTEXT_HOST → dùng từ host machine (IDE, Postman)
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9093
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
     networks:
       - microservices-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Mail Dev — fake SMTP server để test email notification
+  # UI: http://localhost:1080
+  # ---------------------------------------------------------------------------
+  mail-dev:
+    container_name: ms_mail_dev
+    image: maildev/maildev
+    ports:
+      - "1080:1080"   # Web UI
+      - "1025:1025"   # SMTP
+    networks:
+      - microservices-net
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Zipkin — distributed tracing
+  # UI: http://localhost:9411
+  # ---------------------------------------------------------------------------
+  zipkin:
+    container_name: ms_zipkin
+    image: openzipkin/zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - microservices-net
+    restart: unless-stopped
 
 networks:
   microservices-net:
@@ -119,4 +199,5 @@ networks:
 
 volumes:
   mysql-data:
-  mongo: #Đã sửa
+  mongo-data:
+  redis-data:
